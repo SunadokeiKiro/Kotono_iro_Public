@@ -1,0 +1,39 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ユーザーがサインインしており、かつデータ所有者本人であることを確認するヘルパー関数
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    // "users" コレクションのルール
+    // "users" コレクションのルール
+    match /users/{userId} {
+      // ユーザーID以下の全ドキュメント・サブコレクションへのアクセスを許可
+      allow read, write: if isOwner(userId);
+      
+      // Explicit subcollection matching (not strictly necessary with the above if modified, but good for clarity/granularity if we want to separate later)
+      // Since I cannot change the top-level match to recursive easily without affecting structure logic, I will add the missing subcollection match.
+      
+      match /private_data/{document=**} {
+        allow read, write: if isOwner(userId);
+      }
+
+      match /subscription/{document=**} {
+        allow read: if isOwner(userId);
+        // ★ セキュリティ強化: クライアントからの直接書き込みを禁止
+        // プラン変更はCloud Functions (Admin SDK) からのみ許可
+        allow write: if false;
+      }
+      
+      match /monthly_data/{document=**} {
+        allow read, write: if isOwner(userId);
+      }
+      
+      match /history/{document=**} {
+        allow read, write: if isOwner(userId);
+      }
+    }
+  }
+}

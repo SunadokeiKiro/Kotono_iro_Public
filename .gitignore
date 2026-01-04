@@ -1,0 +1,108 @@
+# ========================================
+# Unity Generated Files (MUST EXCLUDE)
+# ========================================
+
+# Unity自動生成フォルダ
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Bb]uild/
+/[Bb]uilds/
+/[Ll]ogs/
+/[Uu]ser[Ss]ettings/
+
+# IDE設定
+/.idea/
+.vs/
+*.csproj
+*.sln
+*.suo
+*.user
+
+# ビルド成果物
+*.apk
+*.aab
+*.ipa
+*.unitypackage
+*.pdb
+
+# Burstデバッグ情報
+*_BurstDebugInformation_DoNotShip/
+
+# Unity固有
+*.pidb.meta
+*.pdb.meta
+/[Aa]ssets/[Aa]ddressable[Aa]ssets[Dd]ata/
+/[Aa]ssets/[Ss]treamingAssets/aa/
+
+# ========================================
+# Large Binary Files (GitHub 100MB limit)
+# ========================================
+
+# Firebase x86_64プラグイン（macOS/Linuxデスクトップ用、100MB超）
+/[Aa]ssets/Firebase/Plugins/x86_64/
+
+# 大きなフォントアセット
+/[Aa]ssets/Resources/Fonts/*.asset
+
+# ========================================
+# Security Sensitive Files
+# ========================================
+
+# Keystoreファイル（Android署名）
+*.keystore
+*.jks
+
+# 環境変数ファイル
+.env
+.env.*
+!.env.example
+
+# ========================================
+# Unity Plastic SCM
+# ========================================
+
+.plastic/
+*.plastic
+*.plastic.wkspace/
+.utmp/
+
+# ========================================
+# Firebase / Node.js
+# ========================================
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+firebase-debug.log*
+firebase-debug.*.log*
+
+# Firebase cache
+.firebase/
+
+# node_modules
+node_modules/
+
+# Optional caches
+.npm
+.eslintcache
+
+# Output
+*.tgz
+.yarn-integrity
+
+# dataconnect
+.dataconnect
+
+# ========================================
+# OS Generated Files
+# ========================================
+
+.DS_Store
+.DS_Store?
+Thumbs.db
+ehthumbs.db
+Desktop.ini

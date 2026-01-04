@@ -1,0 +1,7 @@
+node_modules/
+*.local
+
+# Environment variables (security: double protection)
+.env
+.env.*
+!.env.example

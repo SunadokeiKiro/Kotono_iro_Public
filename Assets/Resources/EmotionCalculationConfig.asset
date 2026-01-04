@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 43a6c5980b0838247b5f3f1a0a230af7, type: 3}
+  m_Name: EmotionCalculationConfig
+  m_EditorClassIdentifier: 
+  joyDivisor: 500
+  angerDivisor: 400
+  sadnessDivisor: 450
+  sadnessFromEnergyDivisor: 2
+  enjoymentDivisor: 400
+  focusDivisor: 400
+  emoCogBaseline: 100
+  anxietyDivisor: 400
+  confidenceDivisor: 400
+  joyEnlargeFactor: 1
+  angerEnlargeFactor: 1
+  sadnessEnlargeFactor: 1
+  enjoymentEnlargeFactor: 1
+  focusEnlargeFactor: 1
+  anxietyEnlargeFactor: 1
+  confidenceEnlargeFactor: 1

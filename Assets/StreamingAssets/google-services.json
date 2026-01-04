@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "306654885444",
+    "project_id": "kotono-iro-project",
+    "storage_bucket": "kotono-iro-project.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:306654885444:android:7d5eff45064d3cc7f96e11",
+        "android_client_info": {
+          "package_name": "com.hourglass.Kotonoiro"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC30QF03lNw2isNCPamX_ljMANHG9cglNU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

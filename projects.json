@@ -1,0 +1,38 @@
+{
+  "status": "success",
+  "result": [
+    {
+      "projectId": "daily-log-app-967da",
+      "projectNumber": "458116674219",
+      "displayName": "daily-log-app",
+      "name": "projects/daily-log-app-967da",
+      "resources": {
+        "hostingSite": "daily-log-app-967da"
+      },
+      "state": "ACTIVE",
+      "etag": "1_a45118a3-4d88-41b5-9812-25a3e65cd8b6"
+    },
+    {
+      "projectId": "kotono-iro-project",
+      "projectNumber": "306654885444",
+      "displayName": "Kotono-iro-Project",
+      "name": "projects/kotono-iro-project",
+      "resources": {
+        "hostingSite": "kotono-iro-project"
+      },
+      "state": "ACTIVE",
+      "etag": "1_95f36bbb-84c0-4980-8096-83335f8b6162"
+    },
+    {
+      "projectId": "relationship-building",
+      "projectNumber": "202421782278",
+      "displayName": "Relationship-building",
+      "name": "projects/relationship-building",
+      "resources": {
+        "hostingSite": "relationship-building"
+      },
+      "state": "ACTIVE",
+      "etag": "1_1d6ebfee-a03d-44c0-b94f-e6e620b59a35"
+    }
+  ]
+}
