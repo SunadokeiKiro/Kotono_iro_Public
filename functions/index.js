@@ -189,6 +189,8 @@ exports.verifyReceipt = functions.https.onRequest(async (req, res) => {
                 newPlan = "Standard";
             } else if (productId.includes("premium")) {
                 newPlan = "Premium";
+            } else if (productId.includes("ultimate")) {
+                newPlan = "Ultimate";
             }
 
             // ★ RTDNでユーザー特定するためにpurchaseTokenを保存
@@ -342,6 +344,7 @@ exports.checkSubscriptionStatus = functions.https.onRequest(async (req, res) => 
                     let plan = "Free";
                     if (productId.includes("standard")) plan = "Standard";
                     else if (productId.includes("premium")) plan = "Premium";
+                    else if (productId.includes("ultimate")) plan = "Ultimate";
 
                     res.status(200).json({
                         success: true,
@@ -411,19 +414,43 @@ exports.proxyAmiVoice = functions.https.onRequest(async (req, res) => {
     }
 
     // ★★★ 2.5 STRICT PLAN CHECK (Server-Side Enforcement) ★★★
+    let currentPlan = "Free";
+    let subData = {};
     try {
         const subDoc = await admin.firestore().collection("users").doc(uid).collection("subscription").doc("status").get();
-        const plan = subDoc.exists ? (subDoc.data().plan || "Free") : "Free";
+        subData = subDoc.exists ? subDoc.data() : {};
+        currentPlan = subData.plan || "Free";
 
-        console.log(`User ${uid} requesting API. Plan: ${plan}`);
+        console.log(`User ${uid} requesting API. Plan: ${currentPlan}`);
 
-        // If plan is Free, DENY access to App Key (Proxy)
-        // Free users must use their own User Key (client-side), not this proxy.
-        if (plan === "Free") {
-            console.warn(`Blocked API access for Free user ${uid}`);
-            res.status(403).send("Payment Required: Upgrade to Premium to use this feature.");
-            return;
+        if (currentPlan === "Free") {
+            // ★ Freeユーザー: 永久3回（各最大10秒）のAppキー利用をチェック
+            const freeTrialCount = subData.free_trial_count || 0;
+            const maxFreeTrials = 3;
+
+            if (freeTrialCount >= maxFreeTrials) {
+                // 既に3回使い切った
+                console.warn(`Blocked API access for Free user ${uid}: Free trial exhausted (${freeTrialCount}/${maxFreeTrials}).`);
+                res.status(403).json({
+                    error: "FREE_TRIAL_EXHAUSTED",
+                    message: "無料お試し枠（3回）を使い切りました。有料プランにアップグレードしてください。",
+                    usedCount: freeTrialCount,
+                    maxCount: maxFreeTrials
+                });
+                return;
+            }
+
+            // 使用回数をインクリメント
+            console.log(`Free user ${uid}: Free trial usage ${freeTrialCount + 1}/${maxFreeTrials}.`);
+            await admin.firestore()
+                .collection("users").doc(uid)
+                .collection("subscription").doc("status")
+                .set({
+                    free_trial_count: freeTrialCount + 1,
+                    updatedAt: admin.firestore.FieldValue.serverTimestamp()
+                }, { merge: true });
         }
+        // Standard/Premium/Ultimate はそのまま通過
     } catch (dbError) {
         console.error("Plan Check Error:", dbError);
         res.status(500).send("Server Error (Plan Check)");
@@ -473,7 +500,18 @@ exports.proxyAmiVoice = functions.https.onRequest(async (req, res) => {
 
                 const form = new FormData();
                 form.append("u", appKey);
-                form.append("d", fields["d"] || "");
+
+                // ★ UltimateプランはloggingOptOutを強制的にTrueに設定
+                let dParam = fields["d"] || "";
+                if (currentPlan === "Ultimate") {
+                    if (dParam.includes("loggingOptOut=False")) {
+                        dParam = dParam.replace(/loggingOptOut=False/g, "loggingOptOut=True");
+                    } else if (!dParam.includes("loggingOptOut=True")) {
+                        dParam = dParam.trim() + " loggingOptOut=True";
+                    }
+                    console.log(`Ultimate user ${uid}: loggingOptOut forced to True`);
+                }
+                form.append("d", dParam);
 
                 if (tmpFiles.length > 0) {
                     form.append("a", fs.createReadStream(tmpFiles[0]), {
@@ -655,7 +693,7 @@ exports.reserveQuota = functions.https.onRequest(async (req, res) => {
                 "Free": 180,
                 "Standard": 3600,
                 "Premium": 10800,
-                "Enterprise": 10800
+                "Ultimate": 28800
             };
             const maxQuota = quotaLimits[plan] || 180;
 
@@ -920,6 +958,7 @@ exports.handlePlayNotification = onMessagePublished('play-subscription-notificat
             let newPlan = 'Free';
             if (subscriptionId.includes('standard')) newPlan = 'Standard';
             else if (subscriptionId.includes('premium')) newPlan = 'Premium';
+            else if (subscriptionId.includes('ultimate')) newPlan = 'Ultimate';
 
             console.log(`[handlePlayNotification] Subscription active. Setting plan to: ${newPlan}`);
             await admin.firestore()
@@ -942,3 +981,176 @@ exports.handlePlayNotification = onMessagePublished('play-subscription-notificat
         console.error('[handlePlayNotification] Error processing notification:', error);
     }
 });
+
+// -----------------------------
+// Validate API Key Function
+// APIキーの有効性を確認し、特典資格を付与
+// -----------------------------
+
+exports.validateApiKey = functions.https.onRequest(async (req, res) => {
+    // 1. CORS & Method Check
+    res.set("Access-Control-Allow-Origin", "*");
+    if (req.method === "OPTIONS") {
+        res.set("Access-Control-Allow-Methods", "POST");
+        res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+        res.status(204).send("");
+        return;
+    }
+    if (req.method !== "POST") {
+        res.status(405).send("Method Not Allowed");
+        return;
+    }
+
+    // 2. Validate Firebase Auth
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        res.status(401).send("Unauthorized");
+        return;
+    }
+    let uid;
+    try {
+        const idToken = authHeader.split("Bearer ")[1];
+        const decodedToken = await admin.auth().verifyIdToken(idToken);
+        uid = decodedToken.uid;
+    } catch (error) {
+        console.error("Auth Error (validateApiKey):", error);
+        res.status(401).send("Invalid Token");
+        return;
+    }
+
+    // 3. Parse Body
+    const { apiKey } = req.body;
+    if (!apiKey) {
+        res.status(400).json({ valid: false, error: "Missing apiKey" });
+        return;
+    }
+
+    console.log(`[validateApiKey] Validating API key for user ${uid}`);
+
+    try {
+        // 4. AmiVoice APIに無音テストリクエストを送信
+        // 無音（発話なし）の場合は課金されない
+        const testUrl = "https://acp-api.amivoice.com/v1/recognize";
+
+        // 無音WAVファイルを生成（PCM 16bit, 16kHz, モノラル, 0.1秒）
+        const silentWavBuffer = createSilentWav(0.1);
+
+        const form = new FormData();
+        form.append("u", apiKey);
+        form.append("d", "grammarFileNames=-a-general");
+        form.append("a", silentWavBuffer, {
+            filename: "silent.wav",
+            contentType: "audio/wav"
+        });
+
+        const response = await axios.post(testUrl, form, {
+            headers: {
+                ...form.getHeaders()
+            },
+            timeout: 10000,
+            validateStatus: () => true // エラーステータスでも例外をスローしない
+        });
+
+        console.log(`[validateApiKey] AmiVoice response status: ${response.status}`);
+
+        // 5. レスポンスを判定
+        if (response.status === 200) {
+            // 認証成功 → APIキー有効
+            console.log(`[validateApiKey] API key is valid for user ${uid}`);
+
+            // 特典資格をFirestoreに保存
+            const subRef = admin.firestore()
+                .collection("users").doc(uid)
+                .collection("subscription").doc("status");
+
+            const subDoc = await subRef.get();
+            const existingData = subDoc.exists ? subDoc.data() : {};
+
+            // 既に特典を使用済みかチェック
+            const offerUsed = existingData.apikey_offer_used || false;
+
+            await subRef.set({
+                api_key_valid: true,
+                api_key_validated_at: admin.firestore.FieldValue.serverTimestamp(),
+                apikey_offer_eligible: !offerUsed, // 未使用なら資格あり
+                updatedAt: admin.firestore.FieldValue.serverTimestamp()
+            }, { merge: true });
+
+            res.json({
+                valid: true,
+                offerEligible: !offerUsed,
+                offerId: "apikey-registration-trial",
+                message: offerUsed
+                    ? "APIキーは有効です（特典は使用済み）"
+                    : "APIキーは有効です。Standardプラン1カ月無料特典が利用可能です"
+            });
+        } else if (response.status === 401 || response.status === 403) {
+            // 認証失敗 → APIキー無効
+            console.log(`[validateApiKey] API key is invalid for user ${uid}`);
+
+            await admin.firestore()
+                .collection("users").doc(uid)
+                .collection("subscription").doc("status")
+                .set({
+                    api_key_valid: false,
+                    apikey_offer_eligible: false,
+                    updatedAt: admin.firestore.FieldValue.serverTimestamp()
+                }, { merge: true });
+
+            res.json({
+                valid: false,
+                offerEligible: false,
+                error: "APIキーが無効です。正しいキーを入力してください。"
+            });
+        } else {
+            // その他のエラー
+            console.error(`[validateApiKey] Unexpected response: ${response.status}`, response.data);
+            res.status(500).json({
+                valid: false,
+                error: "APIキーの検証中にエラーが発生しました"
+            });
+        }
+
+    } catch (error) {
+        console.error("[validateApiKey] Error:", error.message);
+        res.status(500).json({
+            valid: false,
+            error: "APIキーの検証に失敗しました: " + error.message
+        });
+    }
+});
+
+// 無音WAVファイルを生成するヘルパー関数
+function createSilentWav(durationSeconds) {
+    const sampleRate = 16000;
+    const numChannels = 1;
+    const bitsPerSample = 16;
+    const numSamples = Math.floor(sampleRate * durationSeconds);
+    const dataSize = numSamples * numChannels * (bitsPerSample / 8);
+    const fileSize = 44 + dataSize;
+
+    const buffer = Buffer.alloc(fileSize);
+    let offset = 0;
+
+    // RIFF header
+    buffer.write("RIFF", offset); offset += 4;
+    buffer.writeUInt32LE(fileSize - 8, offset); offset += 4;
+    buffer.write("WAVE", offset); offset += 4;
+
+    // fmt chunk
+    buffer.write("fmt ", offset); offset += 4;
+    buffer.writeUInt32LE(16, offset); offset += 4; // chunk size
+    buffer.writeUInt16LE(1, offset); offset += 2; // PCM
+    buffer.writeUInt16LE(numChannels, offset); offset += 2;
+    buffer.writeUInt32LE(sampleRate, offset); offset += 4;
+    buffer.writeUInt32LE(sampleRate * numChannels * bitsPerSample / 8, offset); offset += 4;
+    buffer.writeUInt16LE(numChannels * bitsPerSample / 8, offset); offset += 2;
+    buffer.writeUInt16LE(bitsPerSample, offset); offset += 2;
+
+    // data chunk
+    buffer.write("data", offset); offset += 4;
+    buffer.writeUInt32LE(dataSize, offset); offset += 4;
+    // 残りは0（無音）で初期化済み
+
+    return buffer;
+}
