@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>コトノイロ (Kotono_iro) - Legal</title>
+    <meta name="description" content="コトノイロ (Kotono_iro) - 声で感情を可視化するアプリ">
+    <style>
+        :root {
+            --primary-color: #6366f1;
+            --bg-color: #0f0f1a;
+            --card-bg: #1a1a2e;
+            --text-color: #e2e8f0;
+            --text-muted: #94a3b8;
+            --border-color: #2d2d44;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
+            background: var(--bg-color);
+            color: var(--text-color);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            text-align: center;
+            max-width: 600px;
+        }
+
+        .logo {
+            font-size: 4rem;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #a78bfa, #818cf8, #6366f1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+            margin-bottom: 50px;
+        }
+
+        .links {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .links a {
+            display: block;
+            padding: 20px 40px;
+            background: var(--card-bg);
+            color: var(--text-color);
+            text-decoration: none;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
+        }
+
+        .links a:hover {
+            background: var(--primary-color);
+            border-color: var(--primary-color);
+            transform: translateY(-2px);
+        }
+
+        .footer {
+            margin-top: 60px;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        @media (max-width: 600px) {
+            h1 {
+                font-size: 1.8rem;
+            }
+
+            .logo {
+                font-size: 3rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="logo">🎨</div>
+        <h1>コトノイロ</h1>
+        <p class="subtitle">Kotono_iro - 声で感情を可視化するアプリ</p>
+
+        <div class="links">
+            <a href="privacy-policy.html">
+                📋 プライバシーポリシー / Privacy Policy
+            </a>
+            <a href="terms-of-service.html">
+                📜 利用規約 / Terms of Service
+            </a>
+        </div>
+
+        <div class="footer">
+            <p>© 2026 Hourglass Studio. All rights reserved.</p>
+            <p style="margin-top: 10px;">
+                Contact: <a href="mailto:hourglassstudio2025@gmail.com"
+                    style="color: #818cf8;">hourglassstudio2025@gmail.com</a>
+            </p>
+        </div>
+    </div>
+</body>
+
+</html>

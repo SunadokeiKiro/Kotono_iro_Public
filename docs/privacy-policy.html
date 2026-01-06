@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>プライバシーポリシー | コトノイロ (Kotono_iro)</title>
+    <style>
+        :root {
+            --primary-color: #6366f1;
+            --bg-color: #0f0f1a;
+            --card-bg: #1a1a2e;
+            --text-color: #e2e8f0;
+            --text-muted: #94a3b8;
+            --border-color: #2d2d44;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
+            background: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.8;
+            padding: 0;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #1a1a2e 0%, #2d1b4e 100%);
+            padding: 60px 20px;
+            text-align: center;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .header h1 {
+            font-size: 2rem;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #a78bfa, #818cf8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .header .app-name {
+            color: var(--text-muted);
+            font-size: 1rem;
+        }
+        
+        .header .updated {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            margin-top: 15px;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        
+        .lang-switch {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .lang-switch a {
+            display: inline-block;
+            padding: 10px 25px;
+            margin: 5px;
+            background: var(--card-bg);
+            color: var(--text-color);
+            text-decoration: none;
+            border-radius: 25px;
+            border: 1px solid var(--border-color);
+            transition: all 0.3s ease;
+        }
+        
+        .lang-switch a:hover,
+        .lang-switch a.active {
+            background: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+        
+        .content {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 40px;
+            border: 1px solid var(--border-color);
+        }
+        
+        .section {
+            margin-bottom: 35px;
+        }
+        
+        .section:last-child {
+            margin-bottom: 0;
+        }
+        
+        h2 {
+            color: #a78bfa;
+            font-size: 1.3rem;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        h3 {
+            color: #c4b5fd;
+            font-size: 1.1rem;
+            margin: 20px 0 10px 0;
+        }
+        
+        p {
+            margin-bottom: 15px;
+            color: var(--text-color);
+        }
+        
+        ul {
+            margin-left: 25px;
+            margin-bottom: 15px;
+        }
+        
+        li {
+            margin-bottom: 8px;
+            color: var(--text-muted);
+        }
+        
+        a {
+            color: #818cf8;
+        }
+        
+        a:hover {
+            color: #a78bfa;
+        }
+        
+        .contact-box {
+            background: rgba(99, 102, 241, 0.1);
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .contact-box a {
+            font-size: 1.1rem;
+        }
+        
+        .footer {
+            text-align: center;
+            padding: 30px;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+        
+        .footer a {
+            color: var(--text-muted);
+            margin: 0 10px;
+        }
+        
+        #en { display: none; }
+        
+        @media (max-width: 600px) {
+            .header h1 { font-size: 1.5rem; }
+            .content { padding: 25px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>プライバシーポリシー</h1>
+        <p class="app-name">コトノイロ (Kotono_iro)</p>
+        <p class="updated">最終更新日: 2026年1月5日</p>
+    </div>
+    
+    <div class="container">
+        <div class="lang-switch">
+            <a href="#" onclick="showLang('ja'); return false;" id="btn-ja" class="active">日本語</a>
+            <a href="#" onclick="showLang('en'); return false;" id="btn-en">English</a>
+        </div>
+        
+        <!-- 日本語版 -->
+        <div id="ja" class="content">
+            <div class="section">
+                <h2>1. ユーザー情報の取得と利用目的</h2>
+                <p>本アプリケーション（以下、「本アプリ」）は、以下の情報を取得・利用します。</p>
+                
+                <h3>■ マイク入力（音声データ）</h3>
+                <p><strong>利用目的:</strong> ユーザーの声から感情を分析し、アート（波紋アニメーション）を生成するため。</p>
+                <ul>
+                    <li>音声データは、感情分析API (AmiVoice Cloud Platform) に送信され、分析処理が行われます。</li>
+                    <li>分析完了後、音声データそのものはサーバーから削除され、永続的に保存されることはありません。</li>
+                    <li>分析結果（感情パラメータ）のみが、お客様のアカウントに紐づくクラウドストレージ (Google Firebase) に保存されます。</li>
+                </ul>
+                
+                <h3>■ アカウント情報（メールアドレス）</h3>
+                <p><strong>利用目的:</strong> ユーザー認証およびアカウント管理のため。</p>
+                <ul>
+                    <li>お客様のメールアドレスは、Firebase Authentication を通じて安全に管理されます。</li>
+                    <li>パスワードは暗号化されて保存され、開発者が直接閲覧することはできません。</li>
+                </ul>
+                
+                <h3>■ アプリ内課金情報</h3>
+                <p><strong>利用目的:</strong> プレミアム機能（プラン）の提供および有効期間の管理のため。</p>
+                <ul>
+                    <li>Google Play Store または Apple App Store の決済システムを利用しており、開発者がお客様のクレジットカード情報などを直接保持することはありません。</li>
+                    <li>購入履歴（プラン種別、有効期限）のみがお客様のアカウントに保存されます。</li>
+                </ul>
+                
+                <h3>■ 端末・利用状況データ</h3>
+                <p><strong>利用目的:</strong> アプリの改善、不具合の解析、サービスの安定性向上のため。</p>
+                <ul>
+                    <li>Firebase Analytics により、デバイス情報（機種、OS バージョン）、アプリの利用状況（画面閲覧、機能使用頻度）が匿名化された形式で収集されます。</li>
+                    <li>これらのデータは個人を特定するものではありません。</li>
+                </ul>
+            </div>
+            
+            <div class="section">
+                <h2>2. 第三者サービスの使用</h2>
+                <p>本アプリは、サービスの提供と向上のために、以下の第三者サービスを利用しています。</p>
+                
+                <h3>■ Google Firebase</h3>
+                <p><strong>利用目的:</strong> 認証、データの保存、アプリの利用状況分析、不具合の解析</p>
+                <p>プライバシーポリシー: <a href="https://policies.google.com/privacy" target="_blank">https://policies.google.com/privacy</a></p>
+                
+                <h3>■ AmiVoice Cloud Platform</h3>
+                <p><strong>利用目的:</strong> 音声感情分析エンジンの提供</p>
+                <p>プライバシーポリシー: <a href="https://acp.amivoice.com/privacy/" target="_blank">https://acp.amivoice.com/privacy/</a></p>
+            </div>
+            
+            <div class="section">
+                <h2>3. 個人情報の管理</h2>
+                <p>本アプリは、取得した情報を適切に管理し、以下の場合を除き、第三者に開示・提供することはありません。</p>
+                <ul>
+                    <li>法令に基づく場合</li>
+                    <li>ユーザーの同意がある場合</li>
+                    <li>人の生命、身体または財産の保護のために必要がある場合</li>
+                </ul>
+            </div>
+            
+            <div class="section">
+                <h2>4. データの削除・アカウント削除</h2>
+                <p>お客様は、ご自身のアカウントおよび保存されたデータの削除を請求する権利があります。</p>
+                <p>削除をご希望の場合は、以下のお問い合わせ先までメールにてご連絡ください。ご本人確認後、30日以内にアカウントおよび関連データを完全に削除いたします。</p>
+            </div>
+            
+            <div class="section">
+                <h2>5. 免責事項</h2>
+                <p>本アプリが提供する感情分析結果は、AIによる推測であり、その正確性や完全性を保証するものではありません。感情分析結果に基づく判断や行動について、開発者は一切の責任を負いません。</p>
+            </div>
+            
+            <div class="section">
+                <h2>6. プライバシーポリシーの変更</h2>
+                <p>本プライバシーポリシーは、法令の改正やサービス内容の変更に伴い、予告なく変更される場合があります。重要な変更がある場合は、アプリ内通知またはメールにてお知らせいたします。</p>
+            </div>
+            
+            <div class="section">
+                <h2>7. お問い合わせ</h2>
+                <p>本アプリのプライバシーポリシーに関するお問い合わせ、またはデータ削除のご依頼は、以下の連絡先までお願いいたします。</p>
+                <div class="contact-box">
+                    <a href="mailto:hourglassstudio2025@gmail.com">hourglassstudio2025@gmail.com</a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- English Version -->
+        <div id="en" class="content">
+            <div class="section">
+                <h2>1. Information Collection and Purpose</h2>
+                <p>This application ("the App") collects and uses the following information:</p>
+                
+                <h3>■ Microphone Input (Audio Data)</h3>
+                <p><strong>Purpose:</strong> To analyze emotions from your voice and generate art (ripple animations).</p>
+                <ul>
+                    <li>Audio data is sent to the emotion analysis API (AmiVoice Cloud Platform) for processing.</li>
+                    <li>After analysis, the audio data is deleted from the server and is not permanently stored.</li>
+                    <li>Only the analysis results (emotion parameters) are saved to cloud storage (Google Firebase) linked to your account.</li>
+                </ul>
+                
+                <h3>■ Account Information (Email Address)</h3>
+                <p><strong>Purpose:</strong> For user authentication and account management.</p>
+                <ul>
+                    <li>Your email address is securely managed through Firebase Authentication.</li>
+                    <li>Passwords are encrypted and cannot be directly viewed by the developer.</li>
+                </ul>
+                
+                <h3>■ In-App Purchase Information</h3>
+                <p><strong>Purpose:</strong> To provide premium features (plans) and manage their validity periods.</p>
+                <ul>
+                    <li>Payment is processed through Google Play Store or Apple App Store systems; the developer does not directly hold your credit card information.</li>
+                    <li>Only purchase history (plan type, expiration date) is saved to your account.</li>
+                </ul>
+                
+                <h3>■ Device and Usage Data</h3>
+                <p><strong>Purpose:</strong> To improve the app, analyze bugs, and enhance service stability.</p>
+                <ul>
+                    <li>Firebase Analytics collects device information (model, OS version) and app usage (screen views, feature usage frequency) in anonymized form.</li>
+                    <li>This data does not identify individuals.</li>
+                </ul>
+            </div>
+            
+            <div class="section">
+                <h2>2. Third-Party Services</h2>
+                <p>The App uses the following third-party services to provide and improve its services.</p>
+                
+                <h3>■ Google Firebase</h3>
+                <p><strong>Purpose:</strong> Authentication, data storage, usage analysis, bug analysis</p>
+                <p>Privacy Policy: <a href="https://policies.google.com/privacy" target="_blank">https://policies.google.com/privacy</a></p>
+                
+                <h3>■ AmiVoice Cloud Platform</h3>
+                <p><strong>Purpose:</strong> Providing voice emotion analysis engine</p>
+                <p>Privacy Policy: <a href="https://acp.amivoice.com/privacy/" target="_blank">https://acp.amivoice.com/privacy/</a></p>
+            </div>
+            
+            <div class="section">
+                <h2>3. Personal Information Management</h2>
+                <p>The App manages collected information appropriately and will not disclose or provide it to third parties except in the following cases:</p>
+                <ul>
+                    <li>When required by law</li>
+                    <li>With user consent</li>
+                    <li>When necessary to protect life, body, or property</li>
+                </ul>
+            </div>
+            
+            <div class="section">
+                <h2>4. Data Deletion / Account Deletion</h2>
+                <p>You have the right to request deletion of your account and stored data.</p>
+                <p>If you wish to delete your data, please contact us via email at the address below. After identity verification, your account and related data will be completely deleted within 30 days.</p>
+            </div>
+            
+            <div class="section">
+                <h2>5. Disclaimer</h2>
+                <p>The emotion analysis results provided by the App are AI-based predictions and do not guarantee accuracy or completeness. The developer assumes no responsibility for judgments or actions based on emotion analysis results.</p>
+            </div>
+            
+            <div class="section">
+                <h2>6. Changes to Privacy Policy</h2>
+                <p>This Privacy Policy may be changed without notice due to legal amendments or service changes. For significant changes, we will notify you via in-app notification or email.</p>
+            </div>
+            
+            <div class="section">
+                <h2>7. Contact</h2>
+                <p>For inquiries regarding this Privacy Policy or data deletion requests, please contact:</p>
+                <div class="contact-box">
+                    <a href="mailto:hourglassstudio2025@gmail.com">hourglassstudio2025@gmail.com</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="footer">
+        <p>© 2026 Hourglass Studio. All rights reserved.</p>
+        <p>
+            <a href="privacy-policy.html">Privacy Policy</a> |
+            <a href="terms-of-service.html">Terms of Service</a>
+        </p>
+    </div>
+    
+    <script>
+        function showLang(lang) {
+            document.getElementById('ja').style.display = lang === 'ja' ? 'block' : 'none';
+            document.getElementById('en').style.display = lang === 'en' ? 'block' : 'none';
+            document.getElementById('btn-ja').classList.toggle('active', lang === 'ja');
+            document.getElementById('btn-en').classList.toggle('active', lang === 'en');
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>利用規約 | コトノイロ (Kotono_iro)</title>
+    <style>
+        :root {
+            --primary-color: #6366f1;
+            --bg-color: #0f0f1a;
+            --card-bg: #1a1a2e;
+            --text-color: #e2e8f0;
+            --text-muted: #94a3b8;
+            --border-color: #2d2d44;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
+            background: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.8;
+            padding: 0;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1a1a2e 0%, #2d1b4e 100%);
+            padding: 60px 20px;
+            text-align: center;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #a78bfa, #818cf8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header .app-name {
+            color: var(--text-muted);
+            font-size: 1rem;
+        }
+
+        .header .updated {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            margin-top: 15px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        .lang-switch {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .lang-switch a {
+            display: inline-block;
+            padding: 10px 25px;
+            margin: 5px;
+            background: var(--card-bg);
+            color: var(--text-color);
+            text-decoration: none;
+            border-radius: 25px;
+            border: 1px solid var(--border-color);
+            transition: all 0.3s ease;
+        }
+
+        .lang-switch a:hover,
+        .lang-switch a.active {
+            background: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+
+        .content {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 40px;
+            border: 1px solid var(--border-color);
+        }
+
+        .section {
+            margin-bottom: 35px;
+        }
+
+        .section:last-child {
+            margin-bottom: 0;
+        }
+
+        h2 {
+            color: #a78bfa;
+            font-size: 1.3rem;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        p {
+            margin-bottom: 15px;
+            color: var(--text-color);
+        }
+
+        ul,
+        ol {
+            margin-left: 25px;
+            margin-bottom: 15px;
+        }
+
+        li {
+            margin-bottom: 8px;
+            color: var(--text-muted);
+        }
+
+        a {
+            color: #818cf8;
+        }
+
+        a:hover {
+            color: #a78bfa;
+        }
+
+        .contact-box {
+            background: rgba(99, 102, 241, 0.1);
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .contact-box p {
+            margin-bottom: 10px;
+            color: var(--text-muted);
+        }
+
+        .contact-box a {
+            font-size: 1.1rem;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 30px;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        .footer a {
+            color: var(--text-muted);
+            margin: 0 10px;
+        }
+
+        #en {
+            display: none;
+        }
+
+        @media (max-width: 600px) {
+            .header h1 {
+                font-size: 1.5rem;
+            }
+
+            .content {
+                padding: 25px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <h1>利用規約</h1>
+        <p class="app-name">コトノイロ (Kotono_iro)</p>
+        <p class="updated">最終更新日: 2026年1月5日</p>
+    </div>
+
+    <div class="container">
+        <div class="lang-switch">
+            <a href="#" onclick="showLang('ja'); return false;" id="btn-ja" class="active">日本語</a>
+            <a href="#" onclick="showLang('en'); return false;" id="btn-en">English</a>
+        </div>
+
+        <!-- 日本語版 -->
+        <div id="ja" class="content">
+            <p>この利用規約（以下、「本規約」）は、Hourglass
+                Studio（以下、「当社」）が提供するモバイルアプリケーション「コトノイロ」（以下、「本アプリ」）の利用条件を定めるものです。ユーザーの皆様（以下、「ユーザー」）には、本規約に同意いただいた上で、本アプリをご利用いただきます。
+            </p>
+
+            <div class="section">
+                <h2>第1条（適用）</h2>
+                <ol>
+                    <li>本規約は、ユーザーと当社との間の本アプリの利用に関わる一切の関係に適用されるものとします。</li>
+                    <li>当社は本アプリに関し、本規約のほか、利用に関するルール等を定めることがあります。これらの規定は、本規約の一部を構成するものとします。</li>
+                </ol>
+            </div>
+
+            <div class="section">
+                <h2>第2条（アカウント登録）</h2>
+                <ol>
+                    <li>本アプリでは、ユーザーがメールアドレスとパスワードを登録してアカウントを作成することで、データの保存やプレミアム機能をご利用いただけます。</li>
+                    <li>ユーザーは、登録情報に変更があった場合、速やかに変更手続きを行うものとします。</li>
+                    <li>ユーザーは、自己の責任においてアカウント情報（メールアドレス、パスワード）を管理するものとし、これを第三者に利用させ、または貸与、譲渡、売買等をしてはならないものとします。</li>
+                    <li>アカウント情報の管理不十分、第三者の使用等による損害の責任はユーザーが負うものとし、当社は一切の責任を負いません。</li>
+                </ol>
+            </div>
+
+            <div class="section">
+                <h2>第3条（禁止事項）</h2>
+                <p>ユーザーは、本アプリの利用にあたり、以下の行為をしてはなりません。</p>
+                <ol>
+                    <li>法令または公序良俗に違反する行為</li>
+                    <li>犯罪行為に関連する行為</li>
+                    <li>当社、他のユーザー、またはその他の第三者の知的財産権、肖像権、プライバシー、名誉その他の権利または利益を侵害する行為</li>
+                    <li>本アプリのサーバーまたはネットワークの機能を破壊したり、妨害したりする行為</li>
+                    <li>本アプリの運営を妨害するおそれのある行為</li>
+                    <li>不正アクセスをし、またはこれを試みる行為</li>
+                    <li>本アプリを逆コンパイル、リバースエンジニアリング、または逆アセンブルする行為</li>
+                    <li>当社が許可しない本アプリ上での広告、宣伝、勧誘、または営業行為</li>
+                    <li>他のユーザーに関する個人情報等を収集または蓄積する行為</li>
+                    <li>他のユーザーに成りすます行為</li>
+                    <li>反社会的勢力に対して直接または間接に利益を供与する行為</li>
+                    <li>その他、当社が不適切と判断する行為</li>
+                </ol>
+            </div>
+
+            <div class="section">
+                <h2>第4条（本アプリの提供の停止等）</h2>
+                <ol>
+                    <li>当社は、以下のいずれかの事由があると判断した場合、ユーザーに事前に通知することなく本アプリの全部または一部の提供を停止または中断することができるものとします。
+                        <ul>
+                            <li>本アプリにかかるシステムの保守点検または更新を行う場合</li>
+                            <li>地震、落雷、火災、停電または天災などの不可抗力により、本アプリの提供が困難となった場合</li>
+                            <li>サーバーまたは通信回線等が事故により停止した場合</li>
+                            <li>その他、当社が本アプリの提供が困難と判断した場合</li>
+                        </ul>
+                    </li>
+                    <li>当社は、本アプリの提供の停止または中断により、ユーザーまたは第三者が被ったいかなる不利益または損害についても、一切の責任を負わないものとします。</li>
+                </ol>
+            </div>
+
+            <div class="section">
+                <h2>第5条（有料プラン・課金について）</h2>
+                <ol>
+                    <li>本アプリには無料プランと有料プラン（Standard、Premium等）があります。</li>
+                    <li>有料プランは、Google Play Store または Apple App Store を通じた定期購読（サブスクリプション）形式で提供されます。</li>
+                    <li><strong>有料プランは自動更新されます。</strong>更新を希望しない場合は、各ストアの設定から更新日の24時間前までに解約手続きを行ってください。</li>
+                    <li>解約手続きを行った場合でも、現在の有効期間が終了するまでは有料プランの機能をご利用いただけます。</li>
+                    <li>購入済みの期間については、原則として返金いたしません。返金については、各ストアのポリシーに従います。</li>
+                    <li>当社は、有料プランの内容および価格を変更する場合があります。重要な変更がある場合は、事前にアプリ内で通知いたします。</li>
+                </ol>
+            </div>
+
+            <div class="section">
+                <h2>第6条（知的財産権）</h2>
+                <ol>
+                    <li>本アプリおよび本アプリに関連するコンテンツ（テキスト、画像、ロゴ、アイコン、ソフトウェア等）の著作権、商標権その他の知的財産権は、当社または正当な権利者に帰属します。</li>
+                    <li>ユーザーが本アプリを通じて生成したアート（波紋アニメーション）の著作権は、そのユーザーに帰属します。ただし、当社は、サービス向上の目的で匿名化・集計化されたデータを利用することができるものとします。
+                    </li>
+                    <li>ユーザーは、当社の許可なく、本アプリのコンテンツを複製、転載、改変、または二次利用することはできません。</li>
+                </ol>
+            </div>
+
+            <div class="section">
+                <h2>第7条（免責事項）</h2>
+                <ol>
+                    <li>本アプリが提供する感情分析結果は、音声認識AI技術に基づく推測であり、医学的・心理学的な診断結果ではありません。</li>
+                    <li>当社は、感情分析結果の正確性、完全性、有用性、特定目的への適合性について、明示または黙示を問わず、いかなる保証も行いません。</li>
+                    <li>感情分析結果に基づくユーザーの判断や行動について、当社は一切の責任を負いません。</li>
+                    <li>当社は、本アプリに事実上または法律上の瑕疵がないことを明示的にも黙示的にも保証しておりません。</li>
+                    <li>当社は、本アプリに起因してユーザーに生じたあらゆる損害について、当社の故意または重過失による場合を除き、一切の責任を負いません。</li>
+                </ol>
+            </div>
+
+            <div class="section">
+                <h2>第8条（サービス内容の変更等）</h2>
+                <p>当社は、ユーザーへの事前の告知をもって、本アプリの内容を変更、追加または廃止することがあり、ユーザーはこれを承諾するものとします。</p>
+            </div>
+
+            <div class="section">
+                <h2>第9条（利用規約の変更）</h2>
+                <ol>
+                    <li>当社は、必要と判断した場合には、ユーザーへの事前の告知なしに、いつでも本規約を変更することができるものとします。</li>
+                    <li>変更後の利用規約は、本アプリに掲載した時点から効力を生じるものとします。</li>
+                    <li>変更後に本アプリを利用した場合、ユーザーは変更後の規約に同意したものとみなします。</li>
+                </ol>
+            </div>
+
+            <div class="section">
+                <h2>第10条（個人情報の取扱い）</h2>
+                <p>本アプリにおける個人情報の取扱いについては、別途定める<a
+                        href="privacy-policy.html">「プライバシーポリシー」</a>によるものとし、ユーザーはこのプライバシーポリシーに従って当社がユーザーの個人情報を取り扱うことについて同意するものとします。
+                </p>
+            </div>
+
+            <div class="section">
+                <h2>第11条（準拠法・裁判管轄）</h2>
+                <ol>
+                    <li>本規約の解釈にあたっては、日本法を準拠法とします。</li>
+                    <li>本アプリに関して紛争が生じた場合には、当社の本店所在地を管轄する裁判所を専属的合意管轄とします。</li>
+                </ol>
+            </div>
+
+            <div class="section">
+                <h2>お問い合わせ</h2>
+                <p>本規約に関するお問い合わせは、以下の連絡先までお願いいたします。</p>
+                <div class="contact-box">
+                    <p>運営者: Hourglass Studio</p>
+                    <a href="mailto:hourglassstudio2025@gmail.com">hourglassstudio2025@gmail.com</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- English Version -->
+        <div id="en" class="content">
+            <p>These Terms of Service ("Terms") set forth the conditions for using the mobile application "Kotono_iro"
+                ("the App") provided by Hourglass Studio ("we," "us," or "our"). By using the App, you ("User") agree to
+                be bound by these Terms.</p>
+
+            <div class="section">
+                <h2>Article 1 (Application)</h2>
+                <ol>
+                    <li>These Terms apply to all relationships between Users and us regarding the use of the App.</li>
+                    <li>We may establish rules and regulations regarding the use of the App in addition to these Terms.
+                        Such rules and regulations shall constitute a part of these Terms.</li>
+                </ol>
+            </div>
+
+            <div class="section">
+                <h2>Article 2 (Account Registration)</h2>
+                <ol>
+                    <li>Users can create an account by registering their email address and password to save data and
+                        access premium features.</li>
+                    <li>Users shall promptly update their registration information if any changes occur.</li>
+                    <li>Users shall manage their account information at their own responsibility and shall not allow
+                        third parties to use, lend, transfer, or sell such information.</li>
+                    <li>Users shall bear responsibility for any damages caused by inadequate management of account
+                        information or use by third parties.</li>
+                </ol>
+            </div>
+
+            <div class="section">
+                <h2>Article 3 (Prohibited Activities)</h2>
+                <p>Users shall not engage in the following activities when using the App:</p>
+                <ol>
+                    <li>Acts that violate laws or public order and morals</li>
+                    <li>Acts related to criminal activities</li>
+                    <li>Acts that infringe on intellectual property rights, portrait rights, privacy, honor, or other
+                        rights of us, other Users, or third parties</li>
+                    <li>Acts that destroy or interfere with the functions of the App's servers or networks</li>
+                    <li>Acts that may obstruct the operation of the App</li>
+                    <li>Unauthorized access or attempts thereof</li>
+                    <li>Decompiling, reverse engineering, or disassembling the App</li>
+                    <li>Advertising, promotion, solicitation, or business activities not authorized by us</li>
+                    <li>Collecting or accumulating personal information about other Users</li>
+                    <li>Impersonating other Users</li>
+                    <li>Directly or indirectly providing benefits to antisocial forces</li>
+                    <li>Any other acts deemed inappropriate by us</li>
+                </ol>
+            </div>
+
+            <div class="section">
+                <h2>Article 4 (Suspension of the App)</h2>
+                <ol>
+                    <li>We may suspend or interrupt all or part of the App without prior notice if:
+                        <ul>
+                            <li>Maintenance or updates to the App's systems are required</li>
+                            <li>The App becomes difficult to provide due to force majeure</li>
+                            <li>Servers or communication lines are stopped due to accidents</li>
+                            <li>We determine that it is difficult to provide the App</li>
+                        </ul>
+                    </li>
+                    <li>We shall not be liable for any disadvantages or damages suffered by Users or third parties due
+                        to the suspension or interruption of the App.</li>
+                </ol>
+            </div>
+
+            <div class="section">
+                <h2>Article 5 (Paid Plans and Billing)</h2>
+                <ol>
+                    <li>The App offers free and paid plans (Standard, Premium, etc.).</li>
+                    <li>Paid plans are provided as subscriptions through Google Play Store or Apple App Store.</li>
+                    <li><strong>Paid plans are automatically renewed.</strong> To cancel, please complete the
+                        cancellation procedure at least 24 hours before the renewal date through your store settings.
+                    </li>
+                    <li>Even after cancellation, paid plan features remain available until the current subscription
+                        period ends.</li>
+                    <li>Refunds for purchased periods are generally not provided. Refunds are subject to each store's
+                        policies.</li>
+                    <li>We may change the content and pricing of paid plans with prior notice within the App.</li>
+                </ol>
+            </div>
+
+            <div class="section">
+                <h2>Article 6 (Intellectual Property Rights)</h2>
+                <ol>
+                    <li>Copyrights, trademarks, and other intellectual property rights related to the App and its
+                        content belong to us or legitimate rights holders.</li>
+                    <li>Copyrights for art (ripple animations) generated by Users through the App belong to those Users.
+                        However, we may use anonymized and aggregated data for service improvement.</li>
+                    <li>Users may not reproduce, reprint, modify, or reuse the App's content without our permission.
+                    </li>
+                </ol>
+            </div>
+
+            <div class="section">
+                <h2>Article 7 (Disclaimer)</h2>
+                <ol>
+                    <li>Emotion analysis results provided by the App are predictions based on voice recognition AI
+                        technology and are not medical or psychological diagnoses.</li>
+                    <li>We make no warranties, express or implied, regarding the accuracy, completeness, usefulness, or
+                        fitness for a particular purpose of emotion analysis results.</li>
+                    <li>We are not responsible for Users' judgments or actions based on emotion analysis results.</li>
+                    <li>We do not guarantee, expressly or implicitly, that the App is free from defects in fact or law.
+                    </li>
+                    <li>We shall not be liable for any damages incurred by Users arising from the App, except in cases
+                        of our intentional or gross negligence.</li>
+                </ol>
+            </div>
+
+            <div class="section">
+                <h2>Article 8 (Changes to Service Content)</h2>
+                <p>We may change, add, or discontinue the content of the App with prior notice to Users, and Users shall
+                    accept such changes.</p>
+            </div>
+
+            <div class="section">
+                <h2>Article 9 (Changes to Terms)</h2>
+                <ol>
+                    <li>We may change these Terms at any time without prior notice to Users when deemed necessary.</li>
+                    <li>The revised Terms shall become effective when posted on the App.</li>
+                    <li>Users who use the App after changes are made shall be deemed to have agreed to the revised
+                        Terms.</li>
+                </ol>
+            </div>
+
+            <div class="section">
+                <h2>Article 10 (Handling of Personal Information)</h2>
+                <p>The handling of personal information in the App shall be in accordance with our separately
+                    established <a href="privacy-policy.html">Privacy Policy</a>. Users agree that we will handle their
+                    personal information in accordance with this Privacy Policy.</p>
+            </div>
+
+            <div class="section">
+                <h2>Article 11 (Governing Law and Jurisdiction)</h2>
+                <ol>
+                    <li>Japanese law shall govern the interpretation of these Terms.</li>
+                    <li>Any disputes arising in connection with the App shall be subject to the exclusive jurisdiction
+                        of the court having jurisdiction over our head office location.</li>
+                </ol>
+            </div>
+
+            <div class="section">
+                <h2>Contact</h2>
+                <p>For inquiries regarding these Terms, please contact:</p>
+                <div class="contact-box">
+                    <p>Operator: Hourglass Studio</p>
+                    <a href="mailto:hourglassstudio2025@gmail.com">hourglassstudio2025@gmail.com</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>© 2026 Hourglass Studio. All rights reserved.</p>
+        <p>
+            <a href="privacy-policy.html">Privacy Policy</a> |
+            <a href="terms-of-service.html">Terms of Service</a>
+        </p>
+    </div>
+
+    <script>
+        function showLang(lang) {
+            document.getElementById('ja').style.display = lang === 'ja' ? 'block' : 'none';
+            document.getElementById('en').style.display = lang === 'en' ? 'block' : 'none';
+            document.getElementById('btn-ja').classList.toggle('active', lang === 'ja');
+            document.getElementById('btn-en').classList.toggle('active', lang === 'en');
+        }
+    </script>
+</body>
+
+</html>
