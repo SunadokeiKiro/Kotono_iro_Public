@@ -1,0 +1,280 @@
+利用規約 (Terms of Service)
+=====================================
+アプリ名: コトノイロ (Kotono_iro)
+最終更新日: 2026年1月5日
+施行日: 2025年12月31日
+
+この利用規約（以下、「本規約」）は、Hourglass Studio（以下、「当社」）が提供する
+モバイルアプリケーション「コトノイロ」（以下、「本アプリ」）の利用条件を定めるものです。
+ユーザーの皆様（以下、「ユーザー」）には、本規約に同意いただいた上で、本アプリをご利用いただきます。
+
+=====================================
+
+第1条（適用）
+-------------
+1. 本規約は、ユーザーと当社との間の本アプリの利用に関わる一切の関係に適用されるものとします。
+2. 当社は本アプリに関し、本規約のほか、利用に関するルール等を定めることがあります。
+   これらの規定は、本規約の一部を構成するものとします。
+
+第2条（アカウント登録）
+-----------------------
+1. 本アプリでは、ユーザーがメールアドレスとパスワードを登録してアカウントを作成することで、
+   データの保存やプレミアム機能をご利用いただけます。
+2. ユーザーは、登録情報に変更があった場合、速やかに変更手続きを行うものとします。
+3. ユーザーは、自己の責任においてアカウント情報（メールアドレス、パスワード）を管理するものとし、
+   これを第三者に利用させ、または貸与、譲渡、売買等をしてはならないものとします。
+4. アカウント情報の管理不十分、第三者の使用等による損害の責任はユーザーが負うものとし、
+   当社は一切の責任を負いません。
+
+第3条（禁止事項）
+-----------------
+ユーザーは、本アプリの利用にあたり、以下の行為をしてはなりません。
+
+1. 法令または公序良俗に違反する行為
+2. 犯罪行為に関連する行為
+3. 当社、他のユーザー、またはその他の第三者の知的財産権、肖像権、プライバシー、
+   名誉その他の権利または利益を侵害する行為
+4. 本アプリのサーバーまたはネットワークの機能を破壊したり、妨害したりする行為
+5. 本アプリの運営を妨害するおそれのある行為
+6. 不正アクセスをし、またはこれを試みる行為
+7. 本アプリを通じて、以下の表現を含む情報を送信する行為
+   - 過度に暴力的な表現
+   - 露骨な性的表現
+   - 差別につながる表現
+   - その他反社会的な内容を含む表現
+8. 本アプリを逆コンパイル、リバースエンジニアリング、または逆アセンブルする行為
+9. 当社が許可しない本アプリ上での広告、宣伝、勧誘、または営業行為
+10. 他のユーザーに関する個人情報等を収集または蓄積する行為
+11. 他のユーザーに成りすます行為
+12. 反社会的勢力に対して直接または間接に利益を供与する行為
+13. その他、当社が不適切と判断する行為
+
+第4条（本アプリの提供の停止等）
+-------------------------------
+1. 当社は、以下のいずれかの事由があると判断した場合、ユーザーに事前に通知することなく
+   本アプリの全部または一部の提供を停止または中断することができるものとします。
+   - 本アプリにかかるシステムの保守点検または更新を行う場合
+   - 地震、落雷、火災、停電または天災などの不可抗力により、本アプリの提供が困難となった場合
+   - サーバーまたは通信回線等が事故により停止した場合
+   - その他、当社が本アプリの提供が困難と判断した場合
+2. 当社は、本アプリの提供の停止または中断により、ユーザーまたは第三者が被ったいかなる
+   不利益または損害についても、一切の責任を負わないものとします。
+
+第5条（有料プラン・課金について）
+---------------------------------
+1. 本アプリには無料プランと有料プラン（Standard、Premium等）があります。
+2. 有料プランは、Google Play Store または Apple App Store を通じた定期購読
+   （サブスクリプション）形式で提供されます。
+3. 有料プランは自動更新されます。更新を希望しない場合は、各ストアの設定から
+   更新日の24時間前までに解約手続きを行ってください。
+4. 解約手続きを行った場合でも、現在の有効期間が終了するまでは有料プランの機能を
+   ご利用いただけます。
+5. 購入済みの期間については、原則として返金いたしません。返金については、
+   各ストアのポリシーに従います。
+6. 当社は、有料プランの内容および価格を変更する場合があります。
+   重要な変更がある場合は、事前にアプリ内で通知いたします。
+
+第6条（知的財産権）
+-------------------
+1. 本アプリおよび本アプリに関連するコンテンツ（テキスト、画像、ロゴ、アイコン、
+   ソフトウェア等）の著作権、商標権その他の知的財産権は、当社または正当な権利者に帰属します。
+2. ユーザーが本アプリを通じて生成したアート（波紋アニメーション）の著作権は、
+   そのユーザーに帰属します。ただし、当社は、サービス向上の目的で匿名化・集計化された
+   データを利用することができるものとします。
+3. ユーザーは、当社の許可なく、本アプリのコンテンツを複製、転載、改変、または
+   二次利用することはできません。
+
+第7条（免責事項）
+-----------------
+1. 本アプリが提供する感情分析結果は、音声認識AI技術に基づく推測であり、
+   医学的・心理学的な診断結果ではありません。
+2. 当社は、感情分析結果の正確性、完全性、有用性、特定目的への適合性について、
+   明示または黙示を問わず、いかなる保証も行いません。
+3. 感情分析結果に基づくユーザーの判断や行動について、当社は一切の責任を負いません。
+4. 当社は、本アプリに事実上または法律上の瑕疵（安全性、信頼性、正確性、完全性、
+   有効性、特定目的への適合性、セキュリティ等に関する欠陥、エラーやバグ、
+   権利侵害等を含みます）がないことを明示的にも黙示的にも保証しておりません。
+5. 当社は、本アプリに起因してユーザーに生じたあらゆる損害について、
+   当社の故意または重過失による場合を除き、一切の責任を負いません。
+
+第8条（サービス内容の変更等）
+-----------------------------
+当社は、ユーザーへの事前の告知をもって、本アプリの内容を変更、追加または
+廃止することがあり、ユーザーはこれを承諾するものとします。
+
+第9条（利用規約の変更）
+-----------------------
+1. 当社は、必要と判断した場合には、ユーザーへの事前の告知なしに、いつでも本規約を
+   変更することができるものとします。
+2. 変更後の利用規約は、本アプリに掲載した時点から効力を生じるものとします。
+3. 変更後に本アプリを利用した場合、ユーザーは変更後の規約に同意したものとみなします。
+
+第10条（個人情報の取扱い）
+--------------------------
+本アプリにおける個人情報の取扱いについては、別途定める「プライバシーポリシー」に
+よるものとし、ユーザーはこのプライバシーポリシーに従って当社がユーザーの個人情報を
+取り扱うことについて同意するものとします。
+
+第11条（通知または連絡）
+------------------------
+ユーザーと当社との間の通知または連絡は、当社の定める方法によって行うものとします。
+
+第12条（権利義務の譲渡の禁止）
+------------------------------
+ユーザーは、当社の書面による事前の承諾なく、利用契約上の地位または本規約に基づく
+権利もしくは義務を第三者に譲渡し、または担保に供することはできません。
+
+第13条（準拠法・裁判管轄）
+--------------------------
+1. 本規約の解釈にあたっては、日本法を準拠法とします。
+2. 本アプリに関して紛争が生じた場合には、当社の本店所在地を管轄する裁判所を
+   専属的合意管轄とします。
+
+=====================================
+
+お問い合わせ
+------------
+本規約に関するお問い合わせは、以下の連絡先までお願いいたします。
+
+運営者: Hourglass Studio
+メールアドレス: hourglassstudio2025@gmail.com
+
+=====================================
+Terms of Service (English)
+=====================================
+Application Name: Kotono_iro
+Last Updated: January 5, 2026
+Effective Date: December 31, 2025
+
+These Terms of Service ("Terms") set forth the conditions for using the mobile 
+application "Kotono_iro" ("the App") provided by Hourglass Studio ("we," "us," or "our").
+By using the App, you ("User") agree to be bound by these Terms.
+
+=====================================
+
+Article 1 (Application)
+-----------------------
+1. These Terms apply to all relationships between Users and us regarding the use of the App.
+2. We may establish rules and regulations regarding the use of the App in addition to these Terms.
+   Such rules and regulations shall constitute a part of these Terms.
+
+Article 2 (Account Registration)
+--------------------------------
+1. Users can create an account by registering their email address and password to 
+   save data and access premium features.
+2. Users shall promptly update their registration information if any changes occur.
+3. Users shall manage their account information (email address, password) at their own 
+   responsibility and shall not allow third parties to use, lend, transfer, or sell such information.
+4. Users shall bear responsibility for any damages caused by inadequate management of 
+   account information or use by third parties. We shall not be liable for any such damages.
+
+Article 3 (Prohibited Activities)
+---------------------------------
+Users shall not engage in the following activities when using the App:
+
+1. Acts that violate laws or public order and morals
+2. Acts related to criminal activities
+3. Acts that infringe on intellectual property rights, portrait rights, privacy, 
+   honor, or other rights or interests of us, other Users, or third parties
+4. Acts that destroy or interfere with the functions of the App's servers or networks
+5. Acts that may obstruct the operation of the App
+6. Unauthorized access or attempts thereof
+7. Transmitting information through the App containing:
+   - Excessively violent expressions
+   - Explicit sexual expressions
+   - Discriminatory expressions
+   - Other antisocial content
+8. Decompiling, reverse engineering, or disassembling the App
+9. Advertising, promotion, solicitation, or business activities not authorized by us
+10. Collecting or accumulating personal information about other Users
+11. Impersonating other Users
+12. Directly or indirectly providing benefits to antisocial forces
+13. Any other acts deemed inappropriate by us
+
+Article 4 (Suspension of the App)
+---------------------------------
+1. We may suspend or interrupt all or part of the App without prior notice if:
+   - Maintenance or updates to the App's systems are required
+   - The App becomes difficult to provide due to force majeure such as earthquakes, 
+     lightning, fires, power outages, or natural disasters
+   - Servers or communication lines are stopped due to accidents
+   - We determine that it is difficult to provide the App
+2. We shall not be liable for any disadvantages or damages suffered by Users or 
+   third parties due to the suspension or interruption of the App.
+
+Article 5 (Paid Plans and Billing)
+----------------------------------
+1. The App offers free and paid plans (Standard, Premium, etc.).
+2. Paid plans are provided as subscriptions through Google Play Store or Apple App Store.
+3. Paid plans are automatically renewed. To cancel, please complete the cancellation 
+   procedure at least 24 hours before the renewal date through your store settings.
+4. Even after cancellation, paid plan features remain available until the current 
+   subscription period ends.
+5. Refunds for purchased periods are generally not provided. Refunds are subject to 
+   each store's policies.
+6. We may change the content and pricing of paid plans. Significant changes will be 
+   notified in advance within the App.
+
+Article 6 (Intellectual Property Rights)
+----------------------------------------
+1. Copyrights, trademarks, and other intellectual property rights related to the App 
+   and its content (text, images, logos, icons, software, etc.) belong to us or 
+   legitimate rights holders.
+2. Copyrights for art (ripple animations) generated by Users through the App belong 
+   to those Users. However, we may use anonymized and aggregated data for service improvement.
+3. Users may not reproduce, reprint, modify, or reuse the App's content without our permission.
+
+Article 7 (Disclaimer)
+----------------------
+1. Emotion analysis results provided by the App are predictions based on voice 
+   recognition AI technology and are not medical or psychological diagnoses.
+2. We make no warranties, express or implied, regarding the accuracy, completeness, 
+   usefulness, or fitness for a particular purpose of emotion analysis results.
+3. We are not responsible for Users' judgments or actions based on emotion analysis results.
+4. We do not guarantee, expressly or implicitly, that the App is free from defects 
+   in fact or law (including defects related to safety, reliability, accuracy, 
+   completeness, validity, fitness for a particular purpose, security, errors, 
+   bugs, rights infringement, etc.).
+5. We shall not be liable for any damages incurred by Users arising from the App, 
+   except in cases of our intentional or gross negligence.
+
+Article 8 (Changes to Service Content)
+--------------------------------------
+We may change, add, or discontinue the content of the App with prior notice to Users, 
+and Users shall accept such changes.
+
+Article 9 (Changes to Terms)
+----------------------------
+1. We may change these Terms at any time without prior notice to Users when deemed necessary.
+2. The revised Terms shall become effective when posted on the App.
+3. Users who use the App after changes are made shall be deemed to have agreed to the revised Terms.
+
+Article 10 (Handling of Personal Information)
+---------------------------------------------
+The handling of personal information in the App shall be in accordance with our 
+separately established Privacy Policy. Users agree that we will handle their 
+personal information in accordance with this Privacy Policy.
+
+Article 11 (Notifications and Communications)
+---------------------------------------------
+Notifications and communications between Users and us shall be made by methods determined by us.
+
+Article 12 (Prohibition of Transfer of Rights and Obligations)
+--------------------------------------------------------------
+Users may not transfer or provide as security their contractual position or rights 
+or obligations under these Terms to third parties without our prior written consent.
+
+Article 13 (Governing Law and Jurisdiction)
+-------------------------------------------
+1. Japanese law shall govern the interpretation of these Terms.
+2. Any disputes arising in connection with the App shall be subject to the exclusive 
+   jurisdiction of the court having jurisdiction over our head office location.
+
+=====================================
+
+Contact
+-------
+For inquiries regarding these Terms, please contact:
+
+Operator: Hourglass Studio
+Email: hourglassstudio2025@gmail.com

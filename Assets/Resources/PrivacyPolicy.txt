@@ -1,0 +1,154 @@
+プライバシーポリシー (Privacy Policy)
+=====================================
+アプリ名: コトノイロ (Kotono_iro)
+最終更新日: 2026年1月5日
+作成日: 2025年12月31日
+
+1. ユーザー情報の取得と利用目的
+---------------------------------
+本アプリケーション（以下、「本アプリ」）は、以下の情報を取得・利用します。
+
+■ マイク入力（音声データ）
+  利用目的: ユーザーの声から感情を分析し、アート（波紋アニメーション）を生成するため。
+  データの取り扱い:
+  - 音声データは、感情分析API (AmiVoice Cloud Platform) に送信され、分析処理が行われます。
+  - 分析完了後、音声データそのものはサーバーから削除され、永続的に保存されることはありません。
+  - 分析結果（感情パラメータ）のみが、お客様のアカウントに紐づくクラウドストレージ (Google Firebase) に保存されます。
+
+■ アカウント情報（メールアドレス）
+  利用目的: ユーザー認証およびアカウント管理のため。
+  データの取り扱い:
+  - お客様のメールアドレスは、Firebase Authentication を通じて安全に管理されます。
+  - パスワードは暗号化されて保存され、開発者が直接閲覧することはできません。
+
+■ アプリ内課金情報
+  利用目的: プレミアム機能（プラン）の提供および有効期間の管理のため。
+  データの取り扱い:
+  - Google Play Store または Apple App Store の決済システムを利用しており、開発者がお客様のクレジットカード情報などを直接保持することはありません。
+  - 購入履歴（プラン種別、有効期限）のみがお客様のアカウントに保存されます。
+
+■ 端末・利用状況データ
+  利用目的: アプリの改善、不具合の解析、サービスの安定性向上のため。
+  データの取り扱い:
+  - Firebase Analytics により、デバイス情報（機種、OS バージョン）、アプリの利用状況（画面閲覧、機能使用頻度）が匿名化された形式で収集されます。
+  - これらのデータは個人を特定するものではありません。
+
+2. 第三者サービスの使用
+-----------------------
+本アプリは、サービスの提供と向上のために、以下の第三者サービスを利用しています。これらのサービスは、それぞれのプライバシーポリシーに従って情報を収集する場合があります。
+
+■ Google Firebase (Analytics, Auth, Firestore, Functions)
+  利用目的: 認証、データの保存、アプリの利用状況分析、不具合の解析
+  プライバシーポリシー: https://policies.google.com/privacy
+
+■ AmiVoice Cloud Platform
+  利用目的: 音声感情分析エンジンの提供
+  プライバシーポリシー: https://acp.amivoice.com/privacy/
+
+3. 個人情報の管理
+-----------------
+本アプリは、取得した情報を適切に管理し、以下の場合を除き、第三者に開示・提供することはありません。
+
+- 法令に基づく場合
+- ユーザーの同意がある場合
+- 人の生命、身体または財産の保護のために必要がある場合
+
+4. データの削除・アカウント削除
+-------------------------------
+お客様は、ご自身のアカウントおよび保存されたデータの削除を請求する権利があります。
+削除をご希望の場合は、以下のお問い合わせ先までメールにてご連絡ください。
+ご本人確認後、30日以内にアカウントおよび関連データを完全に削除いたします。
+
+5. 免責事項
+-----------
+本アプリが提供する感情分析結果は、AIによる推測であり、その正確性や完全性を保証するものではありません。
+感情分析結果に基づく判断や行動について、開発者は一切の責任を負いません。
+
+6. プライバシーポリシーの変更
+------------------------------
+本プライバシーポリシーは、法令の改正やサービス内容の変更に伴い、予告なく変更される場合があります。
+重要な変更がある場合は、アプリ内通知またはメールにてお知らせいたします。
+
+7. お問い合わせ
+---------------
+本アプリのプライバシーポリシーに関するお問い合わせ、またはデータ削除のご依頼は、
+以下の連絡先までお願いいたします。
+
+メールアドレス: hourglassstudio2025@gmail.com
+
+=====================================
+Privacy Policy (English)
+=====================================
+Application Name: Kotono_iro
+Last Updated: January 5, 2026
+Created: December 31, 2025
+
+1. Information Collection and Purpose
+--------------------------------------
+This application ("the App") collects and uses the following information:
+
+■ Microphone Input (Audio Data)
+  Purpose: To analyze emotions from your voice and generate art (ripple animations).
+  Data Handling:
+  - Audio data is sent to the emotion analysis API (AmiVoice Cloud Platform) for processing.
+  - After analysis, the audio data is deleted from the server and is not permanently stored.
+  - Only the analysis results (emotion parameters) are saved to cloud storage (Google Firebase) linked to your account.
+
+■ Account Information (Email Address)
+  Purpose: For user authentication and account management.
+  Data Handling:
+  - Your email address is securely managed through Firebase Authentication.
+  - Passwords are encrypted and cannot be directly viewed by the developer.
+
+■ In-App Purchase Information
+  Purpose: To provide premium features (plans) and manage their validity periods.
+  Data Handling:
+  - Payment is processed through Google Play Store or Apple App Store systems; the developer does not directly hold your credit card information.
+  - Only purchase history (plan type, expiration date) is saved to your account.
+
+■ Device and Usage Data
+  Purpose: To improve the app, analyze bugs, and enhance service stability.
+  Data Handling:
+  - Firebase Analytics collects device information (model, OS version) and app usage (screen views, feature usage frequency) in anonymized form.
+  - This data does not identify individuals.
+
+2. Third-Party Services
+-----------------------
+The App uses the following third-party services to provide and improve its services. These services may collect information according to their respective privacy policies.
+
+■ Google Firebase (Analytics, Auth, Firestore, Functions)
+  Purpose: Authentication, data storage, usage analysis, bug analysis
+  Privacy Policy: https://policies.google.com/privacy
+
+■ AmiVoice Cloud Platform
+  Purpose: Providing voice emotion analysis engine
+  Privacy Policy: https://acp.amivoice.com/privacy/
+
+3. Personal Information Management
+----------------------------------
+The App manages collected information appropriately and will not disclose or provide it to third parties except in the following cases:
+- When required by law
+- With user consent
+- When necessary to protect life, body, or property
+
+4. Data Deletion / Account Deletion
+------------------------------------
+You have the right to request deletion of your account and stored data.
+If you wish to delete your data, please contact us via email at the address below.
+After identity verification, your account and related data will be completely deleted within 30 days.
+
+5. Disclaimer
+-------------
+The emotion analysis results provided by the App are AI-based predictions and do not guarantee accuracy or completeness.
+The developer assumes no responsibility for judgments or actions based on emotion analysis results.
+
+6. Changes to Privacy Policy
+-----------------------------
+This Privacy Policy may be changed without notice due to legal amendments or service changes.
+For significant changes, we will notify you via in-app notification or email.
+
+7. Contact
+----------
+For inquiries regarding this Privacy Policy or data deletion requests, please contact:
+
+Email: hourglassstudio2025@gmail.com
