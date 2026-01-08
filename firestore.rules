@@ -28,7 +28,10 @@ service cloud.firestore {
       }
       
       match /monthly_data/{document=**} {
-        allow read, write: if isOwner(userId);
+        // ★ セキュリティ強化: 読み取りはCloud Functions経由のみ (Admin SDKはルールをバイパス)
+        // プランに基づくアクセス制御をサーバー側で強制
+        allow read: if false;
+        allow write: if isOwner(userId);
       }
       
       match /history/{document=**} {

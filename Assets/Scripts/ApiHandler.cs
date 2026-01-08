@@ -175,12 +175,12 @@ public class SentimentResult
 
 
 
-    public void StartAnalysis(string audioFilePath)
+    public void StartAnalysis(string audioFilePath, bool isAutoRecord = false)
     {
-        StartCoroutine(StartAnalysisAsync(audioFilePath));
+        StartCoroutine(StartAnalysisAsync(audioFilePath, isAutoRecord));
     }
 
-    private IEnumerator StartAnalysisAsync(string audioFilePath)
+    private IEnumerator StartAnalysisAsync(string audioFilePath, bool isAutoRecord = false)
     {
         // ★ 初期化完了を待機 (最大5秒)
         if (!IsInitialized)
@@ -273,7 +273,7 @@ public class SentimentResult
             yield break;
         }
 
-        StartCoroutine(PostRequest(audioFilePath));
+        StartCoroutine(PostRequest(audioFilePath, isAutoRecord));
     }
     
 
@@ -330,9 +330,9 @@ public class SentimentResult
         return originalParam + " " + target;
     }
 
-    private IEnumerator PostRequest(string audioFilePath)
+    private IEnumerator PostRequest(string audioFilePath, bool isAutoRecord = false)
     {
-        Debug.Log("Sending audio recognition request...");
+        Debug.Log($"Sending audio recognition request... (isAutoRecord={isAutoRecord})");
         // IsAnalyzing = true; // Moved to StartAnalysis
         // mainUIManager.ShowLoading(...); // Moved to StartAnalysis or updated there
 
@@ -350,6 +350,7 @@ public class SentimentResult
             {
                 new MultipartFormDataSection("u", activeApiKey),
                 new MultipartFormDataSection("d", activeDParams),
+                new MultipartFormDataSection("isAutoRecord", isAutoRecord ? "true" : "false"), // ★ 自動録音フラグ追加
                 new MultipartFormFileSection("a", audioData, Path.GetFileName(audioFilePath), "audio/wav")
             };
 

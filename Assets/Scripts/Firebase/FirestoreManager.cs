@@ -157,8 +157,8 @@ public class FirestoreManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Load ArtData from Firestore: users/{uid}/monthly_data/{monthKey}
-    /// Returns a new empty ArtData if not found.
+    /// Load ArtData via Cloud Function (server-side plan check).
+    /// Returns a new empty ArtData if not found or access denied.
     /// </summary>
     public void LoadArtData(string monthKey, Action<ArtData> onSuccess, Action<string> onFailure)
     {
@@ -168,45 +168,95 @@ public class FirestoreManager : MonoBehaviour
             return;
         }
 
-        var userId = Firebase.Auth.FirebaseAuth.DefaultInstance.CurrentUser.UserId;
-        var db = Firebase.Firestore.FirebaseFirestore.DefaultInstance;
-        var docRef = db.Collection("users").Document(userId).Collection("monthly_data").Document(monthKey);
-
-        // キャッシュ優先ではなく、サーバー優先にするか？
-        // 頻繁なロードではないため、整合性重視でServer。ただしオフライン時はエラーになるため、Default(自動判断)が良いか。
-        // オフライン対応要件があるため、Source.Default (または指定なし) を使用。
-        docRef.GetSnapshotAsync().ContinueWith(task =>
-        {
-            if (task.IsFaulted)
-            {
-                MainThreadDispatcher.Enqueue(() => onFailure?.Invoke(task.Exception != null ? task.Exception.Flatten().InnerExceptions[0].Message : "Load Failed"));
-                return;
-            }
-
-            if (task.IsCompleted)
-            {
-                var snapshot = task.Result;
-                if (snapshot.Exists && snapshot.TryGetValue("json_data", out string json))
-                {
-                    // JSONパース
-                    try
-                    {
-                        ArtData data = JsonUtility.FromJson<ArtData>(json);
-                        MainThreadDispatcher.Enqueue(() => onSuccess?.Invoke(data));
-                    }
-                    catch (Exception ex)
-                    {
-                        MainThreadDispatcher.Enqueue(() => onFailure?.Invoke($"Parse Error: {ex.Message}"));
-                    }
-                }
-                else
-                {
-                    // データが存在しない場合は新規作成扱い (Empty Data)
-                    MainThreadDispatcher.Enqueue(() => onSuccess?.Invoke(new ArtData()));
-                }
-            }
-        });
+        StartCoroutine(LoadArtDataViaCloudFunction(monthKey, onSuccess, onFailure));
     }
+
+    [System.Serializable]
+    private class MonthlyDataResponse
+    {
+        public bool success;
+        public string message;
+        public string monthKey;
+        public MonthlyDataPayload data;
+    }
+
+    [System.Serializable]
+    private class MonthlyDataPayload
+    {
+        public string json_data;
+        public int entry_count;
+    }
+
+    private IEnumerator LoadArtDataViaCloudFunction(string monthKey, Action<ArtData> onSuccess, Action<string> onFailure)
+    {
+        var user = Firebase.Auth.FirebaseAuth.DefaultInstance.CurrentUser;
+        if (user == null)
+        {
+            onFailure?.Invoke("Not logged in");
+            yield break;
+        }
+
+        var tokenTask = user.TokenAsync(false);
+        yield return new WaitUntil(() => tokenTask.IsCompleted);
+
+        if (tokenTask.Exception != null)
+        {
+            onFailure?.Invoke("Token Error");
+            yield break;
+        }
+
+        string idToken = tokenTask.Result;
+        string url = $"https://us-central1-kotono-iro-project.cloudfunctions.net/getMonthlyData?monthKey={monthKey}";
+
+        using (UnityEngine.Networking.UnityWebRequest request = UnityEngine.Networking.UnityWebRequest.Get(url))
+        {
+            request.SetRequestHeader("Authorization", "Bearer " + idToken);
+
+            yield return request.SendWebRequest();
+
+            if (request.result == UnityEngine.Networking.UnityWebRequest.Result.Success)
+            {
+                try
+                {
+                    var response = JsonUtility.FromJson<MonthlyDataResponse>(request.downloadHandler.text);
+                    if (response.success && response.data != null && !string.IsNullOrEmpty(response.data.json_data))
+                    {
+                        ArtData artData = JsonUtility.FromJson<ArtData>(response.data.json_data);
+                        Debug.Log($"[Firestore] LoadArtData via CF: {monthKey} loaded, entries: {artData.emotionHistory?.Count ?? 0}");
+                        onSuccess?.Invoke(artData);
+                    }
+                    else
+                    {
+                        // Empty data
+                        Debug.Log($"[Firestore] LoadArtData via CF: {monthKey} - no data found, returning empty");
+                        onSuccess?.Invoke(new ArtData());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    onFailure?.Invoke($"Parse Error: {ex.Message}");
+                }
+            }
+            else if (request.responseCode == 403)
+            {
+                // Access denied by plan
+                Debug.LogWarning($"[Firestore] LoadArtData: Access denied for {monthKey} (plan restriction)");
+                onFailure?.Invoke("このデータへのアクセスはプランで制限されています");
+            }
+            else if (request.responseCode == 404)
+            {
+                // Not found - return empty
+                Debug.Log($"[Firestore] LoadArtData: {monthKey} not found, returning empty");
+                onSuccess?.Invoke(new ArtData());
+            }
+            else
+            {
+                Debug.LogError($"[Firestore] LoadArtData Failed ({request.responseCode}): {request.error}");
+                onFailure?.Invoke(request.error);
+            }
+        }
+    }
+
 
     /// <summary>
     /// Save TotalSentiments to Firestore: users/{uid}/monthly_data/{monthKey}_stats
@@ -472,8 +522,8 @@ public class FirestoreManager : MonoBehaviour
          });
     }
     /// <summary>
-    /// Fetch list of available months from Firestore: users/{uid}/monthly_data
-    /// Returns a list of document IDs (e.g. "2023-11").
+    /// Fetch list of accessible months via Cloud Function (server-side plan check).
+    /// Returns a list of accessible month keys based on user's plan.
     /// </summary>
     public void GetMonthlyDataList(Action<List<string>> onSuccess, Action<string> onFailure)
     {
@@ -483,32 +533,68 @@ public class FirestoreManager : MonoBehaviour
              return;
          }
 
-         var userId = Firebase.Auth.FirebaseAuth.DefaultInstance.CurrentUser.UserId;
-         var db = Firebase.Firestore.FirebaseFirestore.DefaultInstance;
-         var colRef = db.Collection("users").Document(userId).Collection("monthly_data");
-
-         colRef.GetSnapshotAsync().ContinueWith(task => {
-             if (task.IsFaulted)
-             {
-                 MainThreadDispatcher.Enqueue(() => onFailure?.Invoke(task.Exception.Flatten().InnerExceptions[0].Message));
-                 return;
-             }
-
-             if (task.IsCompleted)
-             {
-                 List<string> months = new List<string>();
-                 foreach (var doc in task.Result.Documents)
-                 {
-                     // Filter out stats documents (suffix "_stats")
-                     if (!doc.Id.EndsWith("_stats"))
-                     {
-                         months.Add(doc.Id);
-                     }
-                 }
-                 MainThreadDispatcher.Enqueue(() => onSuccess?.Invoke(months));
-             }
-         });
+         StartCoroutine(GetMonthlyDataListViaCloudFunction(onSuccess, onFailure));
     }
+
+    [System.Serializable]
+    private class MonthlyDataListResponse
+    {
+        public bool success;
+        public string plan;
+        public string currentMonth;
+        public string[] accessibleMonths;
+        public string[] lockedMonths;
+    }
+
+    private IEnumerator GetMonthlyDataListViaCloudFunction(Action<List<string>> onSuccess, Action<string> onFailure)
+    {
+        var user = Firebase.Auth.FirebaseAuth.DefaultInstance.CurrentUser;
+        if (user == null)
+        {
+            onFailure?.Invoke("Not logged in");
+            yield break;
+        }
+
+        var tokenTask = user.TokenAsync(false);
+        yield return new WaitUntil(() => tokenTask.IsCompleted);
+
+        if (tokenTask.Exception != null)
+        {
+            onFailure?.Invoke("Token Error");
+            yield break;
+        }
+
+        string idToken = tokenTask.Result;
+        string url = "https://us-central1-kotono-iro-project.cloudfunctions.net/getMonthlyDataList";
+
+        using (UnityEngine.Networking.UnityWebRequest request = UnityEngine.Networking.UnityWebRequest.Get(url))
+        {
+            request.SetRequestHeader("Authorization", "Bearer " + idToken);
+
+            yield return request.SendWebRequest();
+
+            if (request.result == UnityEngine.Networking.UnityWebRequest.Result.Success)
+            {
+                try
+                {
+                    var response = JsonUtility.FromJson<MonthlyDataListResponse>(request.downloadHandler.text);
+                    List<string> months = new List<string>(response.accessibleMonths ?? new string[0]);
+                    Debug.Log($"[Firestore] GetMonthlyDataList via CF: {months.Count} accessible, {response.lockedMonths?.Length ?? 0} locked");
+                    onSuccess?.Invoke(months);
+                }
+                catch (Exception ex)
+                {
+                    onFailure?.Invoke($"Parse Error: {ex.Message}");
+                }
+            }
+            else
+            {
+                Debug.LogError($"[Firestore] GetMonthlyDataList Failed: {request.error}");
+                onFailure?.Invoke(request.error);
+            }
+        }
+    }
+
 
     // ---------------------------------------------------------
     // Subscription & Plan Plan Management

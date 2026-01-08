@@ -549,7 +549,7 @@ public class MicrophoneController : MonoBehaviour
                 SaveWavFile(audioFilePath, processedClip);
                 
                 mainUIManager.HideRecordingPanel(); 
-                apiHandler.StartAnalysis(audioFilePath);
+                apiHandler.StartAnalysis(audioFilePath, wasAuto); // ★ 自動録音フラグを渡す
                 
                 // ★ イベント発火 (自動かどうかを通知)
                 OnRecordingFinished?.Invoke(duration, wasAuto);

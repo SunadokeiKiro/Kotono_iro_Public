@@ -498,8 +498,27 @@ exports.proxyAmiVoice = functions.https.onRequest(async (req, res) => {
             try {
                 await Promise.all(fileWrites);
 
+                // ★★★ 自動録音チェック（サーバー側強制） ★★★
+                const isAutoRecord = fields["isAutoRecord"] === "true" || fields["isAutoRecord"] === "1";
+                if (isAutoRecord) {
+                    // Premium/Ultimate のみ自動録音を許可
+                    if (currentPlan !== "Premium" && currentPlan !== "Ultimate") {
+                        console.warn(`Blocked auto-record for user ${uid}. Plan: ${currentPlan} (requires Premium+)`);
+                        tmpFiles.forEach(f => { try { fs.unlinkSync(f); } catch (e) { } });
+                        res.status(403).json({
+                            error: "AUTO_RECORD_NOT_ALLOWED",
+                            message: "自動録音機能はPremium以上のプランが必要です",
+                            currentPlan: currentPlan,
+                            requiredPlan: "Premium"
+                        });
+                        return;
+                    }
+                    console.log(`Auto-record allowed for ${uid} (${currentPlan})`);
+                }
+
                 const form = new FormData();
                 form.append("u", appKey);
+
 
                 // ★ UltimateプランはloggingOptOutを強制的にTrueに設定
                 let dParam = fields["d"] || "";
@@ -1120,8 +1139,168 @@ exports.validateApiKey = functions.https.onRequest(async (req, res) => {
     }
 });
 
+// -----------------------------
+// ★ Monthly Data Access Control Functions
+// Enforces plan-based archive access restrictions on the server side
+// -----------------------------
+
+/**
+ * Get list of accessible monthly data based on user's plan.
+ */
+exports.getMonthlyDataList = functions.https.onRequest(async (req, res) => {
+    res.set("Access-Control-Allow-Origin", "*");
+    if (req.method === "OPTIONS") {
+        res.set("Access-Control-Allow-Methods", "GET, POST");
+        res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+        res.status(204).send("");
+        return;
+    }
+
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        res.status(401).send("Unauthorized");
+        return;
+    }
+    let uid;
+    try {
+        const idToken = authHeader.split("Bearer ")[1];
+        const decodedToken = await admin.auth().verifyIdToken(idToken);
+        uid = decodedToken.uid;
+    } catch (error) {
+        console.error("Auth Error (getMonthlyDataList):", error);
+        res.status(401).send("Invalid Token");
+        return;
+    }
+
+    try {
+        const subDoc = await admin.firestore()
+            .collection("users").doc(uid)
+            .collection("subscription").doc("status").get();
+
+        let plan = "Free";
+        if (subDoc.exists) {
+            plan = subDoc.data().plan || "Free";
+            if (subDoc.data().downgrade_reason) plan = "Free";
+        }
+
+        const snapshot = await admin.firestore()
+            .collection("users").doc(uid)
+            .collection("monthly_data").get();
+
+        const allowedHistoryMonths = { "Free": 0, "Standard": 6, "Premium": 9999, "Ultimate": 9999 };
+        const maxMonths = allowedHistoryMonths[plan] || 0;
+
+        const now = new Date();
+        const jstTime = new Date(now.getTime() + (9 * 60 + now.getTimezoneOffset()) * 60000);
+        const currentMonth = `${jstTime.getFullYear()}-${String(jstTime.getMonth() + 1).padStart(2, '0')}`;
+
+        const accessibleMonths = [];
+        const lockedMonths = [];
+
+        snapshot.docs.forEach(doc => {
+            if (doc.id.endsWith("_stats")) return;
+            const monthKey = doc.id;
+            if (monthKey === currentMonth) { accessibleMonths.push(monthKey); return; }
+            const monthsDiff = calcMonthsDiff(monthKey, currentMonth);
+            if (monthsDiff <= maxMonths) accessibleMonths.push(monthKey);
+            else lockedMonths.push(monthKey);
+        });
+
+        console.log(`[getMonthlyDataList] User ${uid}, Plan: ${plan}, Accessible: ${accessibleMonths.length}`);
+        res.status(200).json({ success: true, plan, currentMonth, accessibleMonths, lockedMonths });
+    } catch (error) {
+        console.error("getMonthlyDataList Error:", error);
+        res.status(500).send("Internal Server Error: " + error.message);
+    }
+});
+
+/**
+ * Get monthly data for a specific month with plan-based access control.
+ */
+exports.getMonthlyData = functions.https.onRequest(async (req, res) => {
+    res.set("Access-Control-Allow-Origin", "*");
+    if (req.method === "OPTIONS") {
+        res.set("Access-Control-Allow-Methods", "GET, POST");
+        res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+        res.status(204).send("");
+        return;
+    }
+
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        res.status(401).send("Unauthorized");
+        return;
+    }
+    let uid;
+    try {
+        const idToken = authHeader.split("Bearer ")[1];
+        const decodedToken = await admin.auth().verifyIdToken(idToken);
+        uid = decodedToken.uid;
+    } catch (error) {
+        console.error("Auth Error (getMonthlyData):", error);
+        res.status(401).send("Invalid Token");
+        return;
+    }
+
+    const monthKey = req.query.monthKey || req.body?.monthKey;
+    if (!monthKey) {
+        res.status(400).json({ success: false, message: "Missing monthKey" });
+        return;
+    }
+
+    try {
+        const subDoc = await admin.firestore()
+            .collection("users").doc(uid)
+            .collection("subscription").doc("status").get();
+
+        let plan = "Free";
+        if (subDoc.exists) {
+            plan = subDoc.data().plan || "Free";
+            if (subDoc.data().downgrade_reason) plan = "Free";
+        }
+
+        const allowedHistoryMonths = { "Free": 0, "Standard": 6, "Premium": 9999, "Ultimate": 9999 };
+        const maxMonths = allowedHistoryMonths[plan] || 0;
+
+        const now = new Date();
+        const jstTime = new Date(now.getTime() + (9 * 60 + now.getTimezoneOffset()) * 60000);
+        const currentMonth = `${jstTime.getFullYear()}-${String(jstTime.getMonth() + 1).padStart(2, '0')}`;
+
+        const monthsDiff = calcMonthsDiff(monthKey, currentMonth);
+        if (monthKey !== currentMonth && monthsDiff > maxMonths) {
+            console.log(`[getMonthlyData] Denied: ${uid} (${plan}) -> ${monthKey}`);
+            res.status(403).json({ success: false, message: "Access restricted by plan", plan, requiredPlan: monthsDiff <= 6 ? "Standard" : "Premium" });
+            return;
+        }
+
+        const doc = await admin.firestore()
+            .collection("users").doc(uid)
+            .collection("monthly_data").doc(monthKey).get();
+
+        if (!doc.exists) {
+            res.status(404).json({ success: false, message: "Data not found" });
+            return;
+        }
+
+        console.log(`[getMonthlyData] Granted: ${uid} (${plan}) -> ${monthKey}`);
+        res.status(200).json({ success: true, monthKey, data: doc.data() });
+    } catch (error) {
+        console.error("getMonthlyData Error:", error);
+        res.status(500).send("Internal Server Error: " + error.message);
+    }
+});
+
+function calcMonthsDiff(oldMonth, newMonth) {
+    try {
+        const [oldY, oldM] = oldMonth.split('-').map(Number);
+        const [newY, newM] = newMonth.split('-').map(Number);
+        return ((newY - oldY) * 12) + (newM - oldM);
+    } catch (e) { return 9999; }
+}
+
 // 無音WAVファイルを生成するヘルパー関数
 function createSilentWav(durationSeconds) {
+
     const sampleRate = 16000;
     const numChannels = 1;
     const bitsPerSample = 16;
