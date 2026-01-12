@@ -285,18 +285,18 @@ public class SentimentResult
     /// <returns>準備完了ならtrue</returns>
     private bool PrepareConnectionSettings(bool forceAppKey)
     {
-        // ユーザーキー優先
+        // ★ 修正: ユーザーキー使用時も Cloud Functions 経由に変更
         if (!forceAppKey && !string.IsNullOrEmpty(userApiKey))
         {
             activeApiKey = userApiKey;
+            isUsingAppKey = true; // ★ 変更: Cloud Functions経由なのでtrue
             
             // Ultimateチェック (プランに基づくDパラメータ設定)
             bool isUltimate = false;
             if (SubscriptionManager.Instance != null) isUltimate = (SubscriptionManager.Instance.CurrentPlan == PlanType.Ultimate);
             
             activeDParams = SetLoggingOptOut(apiConfig.DParameter, isUltimate);
-            isUsingAppKey = false;
-            Debug.Log($"Using User API Key. (Plan: {SubscriptionManager.Instance?.CurrentPlan})");
+            Debug.Log($"Using User API Key via Cloud Function. (Plan: {SubscriptionManager.Instance?.CurrentPlan})");
             return true;
         }
 
@@ -348,31 +348,36 @@ public class SentimentResult
         {
             List<IMultipartFormSection> form = new List<IMultipartFormSection>
             {
-                new MultipartFormDataSection("u", activeApiKey),
                 new MultipartFormDataSection("d", activeDParams),
                 new MultipartFormDataSection("isAutoRecord", isAutoRecord ? "true" : "false"), // ★ 自動録音フラグ追加
                 new MultipartFormFileSection("a", audioData, Path.GetFileName(audioFilePath), "audio/wav")
             };
 
-            string url = isUsingAppKey ? "https://us-central1-kotono-iro-project.cloudfunctions.net/proxyAmiVoice" : apiConfig.ApiUrlBase;
+            // ★ 修正: URL を常に Cloud Functions に設定
+            string url = $"{apiConfig.CloudFunctionsBaseUrl}/proxyAmiVoice";
 
-            // Get Token if using App Key (Cloud Function)
+            // ★ 修正: Firebase Auth Token は常に必要
             string authToken = "";
-            if (isUsingAppKey)
+            var user = FirebaseAuth.DefaultInstance.CurrentUser;
+            if (user != null)
             {
-                 var user = FirebaseAuth.DefaultInstance.CurrentUser;
-                 if (user != null)
-                 {
-                     var task = user.TokenAsync(false);
-                     yield return new WaitUntil(() => task.IsCompleted);
-                     if (task.Exception == null) authToken = task.Result;
-                     else Debug.LogError($"[ApiHandler] Failed to get Auth Token: {task.Exception}");
-                 }
+                var task = user.TokenAsync(false);
+                yield return new WaitUntil(() => task.IsCompleted);
+                if (task.Exception == null) authToken = task.Result;
+                else Debug.LogError($"[ApiHandler] Failed to get Auth Token: {task.Exception}");
             }
 
             using (UnityWebRequest request = UnityWebRequest.Post(url, form))
             {
-                if (isUsingAppKey && !string.IsNullOrEmpty(authToken))
+                // ★ 修正: ユーザーAPIキー使用時はヘッダーで送信
+                if (!string.IsNullOrEmpty(userApiKey) && activeApiKey == userApiKey)
+                {
+                    request.SetRequestHeader("X-User-Api-Key", activeApiKey);
+                    Debug.Log("[ApiHandler] Sending User API Key via header");
+                }
+                
+                // ★ 修正: Firebase Auth Token を常に送信
+                if (!string.IsNullOrEmpty(authToken))
                 {
                     request.SetRequestHeader("Authorization", "Bearer " + authToken);
                 }
@@ -598,23 +603,16 @@ public class SentimentResult
         string pollUrl;
         string authToken = "";
 
-        if (isUsingAppKey)
+        // ★ 修正: 常に Cloud Functions 経由でポーリング
+        pollUrl = $"{apiConfig.CloudFunctionsBaseUrl}/proxyAmiVoice?sessionid={targetSessionId}";
+        
+        // ★ 修正: Firebase Auth Token は常に必要
+        var user = FirebaseAuth.DefaultInstance.CurrentUser;
+        if (user != null)
         {
-            // Cloud Function Proxy for Polling
-            pollUrl = $"https://us-central1-kotono-iro-project.cloudfunctions.net/proxyAmiVoice?sessionid={targetSessionId}";
-            
-             var user = FirebaseAuth.DefaultInstance.CurrentUser;
-             if (user != null)
-             {
-                 var task = user.TokenAsync(false);
-                 yield return new WaitUntil(() => task.IsCompleted);
-                 if (task.Exception == null) authToken = task.Result;
-             }
-        }
-        else
-        {
-            // Direct AmiVoice Polling
-            pollUrl = $"{apiConfig.ApiUrlBase}/{targetSessionId}";
+            var task = user.TokenAsync(false);
+            yield return new WaitUntil(() => task.IsCompleted);
+            if (task.Exception == null) authToken = task.Result;
         }
 
         const int maxPolls = 100;
@@ -624,17 +622,16 @@ public class SentimentResult
         {
             using (UnityWebRequest request = UnityWebRequest.Get(pollUrl))
             {
-                // activeApiKeyを使用 (AppKeyモードならToken, UserKeyモードならそのキー)
-                if (isUsingAppKey)
+                // ★ 修正: ユーザーAPIキー使用時はヘッダーで送信
+                if (!string.IsNullOrEmpty(userApiKey) && activeApiKey == userApiKey)
                 {
-                    if (!string.IsNullOrEmpty(authToken))
-                    {
-                        request.SetRequestHeader("Authorization", "Bearer " + authToken);
-                    }
+                    request.SetRequestHeader("X-User-Api-Key", activeApiKey);
                 }
-                else
+                
+                // ★ 修正: Firebase Auth Token を常に送信
+                if (!string.IsNullOrEmpty(authToken))
                 {
-                     request.SetRequestHeader("Authorization", "Bearer " + activeApiKey);
+                    request.SetRequestHeader("Authorization", "Bearer " + authToken);
                 }
 
                 yield return request.SendWebRequest();

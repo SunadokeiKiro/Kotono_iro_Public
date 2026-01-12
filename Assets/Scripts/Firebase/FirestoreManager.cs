@@ -9,6 +9,8 @@ public class FirestoreManager : MonoBehaviour
 {
     public static FirestoreManager Instance { get; private set; }
 
+    [SerializeField] private ApiConfig apiConfig;
+
     private void Awake()
     {
         if (Instance == null)
@@ -22,38 +24,7 @@ public class FirestoreManager : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Save subscription status to Firestore: users/{uid}/subscription_status
-    /// </summary>
-    public void SaveSubscriptionStatus(string yearMonth, float usedSeconds, string planName)
-    {
-        if (!FirebaseConfig.Instance.IsInitialized) return;
-        
-        var user = Firebase.Auth.FirebaseAuth.DefaultInstance.CurrentUser;
-        if (user == null) 
-        {
-            Debug.LogWarning("[FirestoreManager] Cannot save: User not logged in.");
-            return;
-        }
-
-        Debug.Log($"[FirestoreManager] Saving Subscription Status: {yearMonth}, Used: {usedSeconds}, Plan: {planName}");
-
-        var db = Firebase.Firestore.FirebaseFirestore.DefaultInstance;
-        var docRef = db.Collection("users").Document(user.UserId).Collection("subscription").Document("status");
-
-        Dictionary<string, object> data = new Dictionary<string, object>
-        {
-            { "year_month", yearMonth },
-            { "used_seconds", usedSeconds },
-            { "plan", planName },
-            { "last_updated", Firebase.Firestore.FieldValue.ServerTimestamp }
-        };
-
-        docRef.SetAsync(data).ContinueWith(task => {
-            if (task.IsCompleted) Debug.Log("[Firestore] Subscription saved.");
-            else Debug.LogError($"[Firestore] Failed to save subscription: {task.Exception}");
-        });
-    }
+    // [REMOVED] SaveSubscriptionStatus (Dead Code / Blocked by rules)
 
     /// <summary>
     /// Save ArtData to Firestore: users/{uid}/monthly_data/{monthKey}/art_data
@@ -206,7 +177,7 @@ public class FirestoreManager : MonoBehaviour
         }
 
         string idToken = tokenTask.Result;
-        string url = $"https://us-central1-kotono-iro-project.cloudfunctions.net/getMonthlyData?monthKey={monthKey}";
+        string url = $"{apiConfig.CloudFunctionsBaseUrl}/getMonthlyData?monthKey={monthKey}";
 
         using (UnityEngine.Networking.UnityWebRequest request = UnityEngine.Networking.UnityWebRequest.Get(url))
         {
@@ -432,7 +403,7 @@ public class FirestoreManager : MonoBehaviour
         }
 
         string idToken = tokenTask.Result;
-        string url = "https://us-central1-kotono-iro-project.cloudfunctions.net/validateApiKey";
+        string url = $"{apiConfig.CloudFunctionsBaseUrl}/validateApiKey";
 
         string jsonBody = $"{{\"apiKey\":\"{apiKey}\"}}";
 
@@ -565,7 +536,7 @@ public class FirestoreManager : MonoBehaviour
         }
 
         string idToken = tokenTask.Result;
-        string url = "https://us-central1-kotono-iro-project.cloudfunctions.net/getMonthlyDataList";
+        string url = $"{apiConfig.CloudFunctionsBaseUrl}/getMonthlyDataList";
 
         using (UnityEngine.Networking.UnityWebRequest request = UnityEngine.Networking.UnityWebRequest.Get(url))
         {
@@ -719,7 +690,7 @@ public class FirestoreManager : MonoBehaviour
         }
 
         string idToken = tokenTask.Result;
-        string url = "https://us-central1-kotono-iro-project.cloudfunctions.net/downgradePlan";
+        string url = $"{apiConfig.CloudFunctionsBaseUrl}/downgradePlan";
 
         string jsonBody = $"{{\"newPlan\":\"{newPlan}\"}}";
 
@@ -781,7 +752,7 @@ public class FirestoreManager : MonoBehaviour
         // Note: Replace with your actual project location/ID if different.
         // Assuming 'us-central1' and project ID from existing config or hardcoded for now.
         // Ideally should be flexible, but matching ApiHandler's pattern.
-        string url = "https://us-central1-kotono-iro-project.cloudfunctions.net/verifyReceipt"; 
+        string url = $"{apiConfig.CloudFunctionsBaseUrl}/verifyReceipt"; 
 
         // Create JSON body
         var requestData = new VerifyReceiptRequest
@@ -935,7 +906,7 @@ public class FirestoreManager : MonoBehaviour
         }
 
         string idToken = tokenTask.Result;
-        string url = "https://us-central1-kotono-iro-project.cloudfunctions.net/checkSubscriptionStatus";
+        string url = $"{apiConfig.CloudFunctionsBaseUrl}/checkSubscriptionStatus";
 
         var requestData = new CheckSubscriptionRequest
         {
@@ -1043,7 +1014,7 @@ public class FirestoreManager : MonoBehaviour
         }
 
         string idToken = tokenTask.Result;
-        string url = "https://us-central1-kotono-iro-project.cloudfunctions.net/reserveQuota";
+        string url = $"{apiConfig.CloudFunctionsBaseUrl}/reserveQuota";
 
         var requestData = new QuotaRequest { yearMonth = yearMonth, requestedSeconds = requestedSeconds };
         string jsonBody = JsonUtility.ToJson(requestData);
@@ -1095,7 +1066,7 @@ public class FirestoreManager : MonoBehaviour
         }
 
         string idToken = tokenTask.Result;
-        string url = "https://us-central1-kotono-iro-project.cloudfunctions.net/consumeQuota";
+        string url = $"{apiConfig.CloudFunctionsBaseUrl}/consumeQuota";
 
         var requestData = new QuotaRequest { yearMonth = yearMonth, actualSeconds = actualSeconds, releasedSeconds = actualSeconds };
         string jsonBody = JsonUtility.ToJson(requestData);

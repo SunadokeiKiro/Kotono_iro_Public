@@ -391,7 +391,7 @@ exports.proxyAmiVoice = functions.https.onRequest(async (req, res) => {
     res.set("Access-Control-Allow-Origin", "*");
     if (req.method === "OPTIONS") {
         res.set("Access-Control-Allow-Methods", "POST, GET");
-        res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+        res.set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-User-Api-Key");
         res.status(204).send("");
         return;
     }
@@ -413,6 +413,12 @@ exports.proxyAmiVoice = functions.https.onRequest(async (req, res) => {
         return;
     }
 
+    // ★★★ 2.3 Check for User API Key ★★★
+    const userApiKey = req.headers["x-user-api-key"];
+    const isUsingUserKey = !!userApiKey;
+
+    console.log(`[proxyAmiVoice] User ${uid} - Using ${isUsingUserKey ? "User API Key" : "App API Key"}`);
+
     // ★★★ 2.5 STRICT PLAN CHECK (Server-Side Enforcement) ★★★
     let currentPlan = "Free";
     let subData = {};
@@ -423,7 +429,8 @@ exports.proxyAmiVoice = functions.https.onRequest(async (req, res) => {
 
         console.log(`User ${uid} requesting API. Plan: ${currentPlan}`);
 
-        if (currentPlan === "Free") {
+        // ★★★ App Key使用時のみFree Trial回数チェック ★★★
+        if (!isUsingUserKey && currentPlan === "Free") {
             // ★ Freeユーザー: 永久3回（各最大10秒）のAppキー利用をチェック
             const freeTrialCount = subData.free_trial_count || 0;
             const maxFreeTrials = 3;
@@ -450,7 +457,45 @@ exports.proxyAmiVoice = functions.https.onRequest(async (req, res) => {
                     updatedAt: admin.firestore.FieldValue.serverTimestamp()
                 }, { merge: true });
         }
-        // Standard/Premium/Ultimate はそのまま通過
+
+        // ★★★ ユーザーAPIキー使用時もクォータチェック（全プラン対象） ★★★
+        if (isUsingUserKey) {
+            // プランごとの月間制限時間（秒）
+            const quotaLimits = {
+                "Free": 180,        // 3分
+                "Standard": 3600,   // 60分
+                "Premium": 10800,   // 180分
+                "Ultimate": 28800   // 480分
+            };
+            const maxQuota = quotaLimits[currentPlan] || 180;
+
+            // 現在の年月を取得
+            const now = new Date();
+            const currentYearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+            // Firestoreから使用量を取得
+            const storedYm = subData.year_month || "";
+            let usedSeconds = (storedYm === currentYearMonth) ? (subData.used_seconds || 0) : 0;
+            let reservedSeconds = (storedYm === currentYearMonth) ? (subData.reserved_seconds || 0) : 0;
+
+            const totalUsed = usedSeconds + reservedSeconds;
+            const remaining = maxQuota - totalUsed;
+
+            console.log(`[Quota Check] User ${uid} (${currentPlan}): Used=${usedSeconds}s, Reserved=${reservedSeconds}s, Remaining=${remaining}s / ${maxQuota}s`);
+
+            if (remaining <= 0) {
+                console.warn(`[Quota Check] User ${uid}: Monthly quota exceeded`);
+                res.status(403).json({
+                    error: "QUOTA_EXCEEDED",
+                    message: "月間制限に達しました",
+                    plan: currentPlan,
+                    used: totalUsed,
+                    limit: maxQuota,
+                    remaining: 0
+                });
+                return;
+            }
+        }
     } catch (dbError) {
         console.error("Plan Check Error:", dbError);
         res.status(500).send("Server Error (Plan Check)");
@@ -458,9 +503,9 @@ exports.proxyAmiVoice = functions.https.onRequest(async (req, res) => {
     }
 
 
-    // 3. Get App Key
+    // 3. Get App Key (User Key使用時は不要だが、フォールバック用に取得)
     const appKey = functions.config().amivoice.appkey;
-    if (!appKey) {
+    if (!isUsingUserKey && !appKey) {
         console.error("Config Error: App Key missing");
         res.status(500).send("Server Configuration Error");
         return;
@@ -517,7 +562,15 @@ exports.proxyAmiVoice = functions.https.onRequest(async (req, res) => {
                 }
 
                 const form = new FormData();
-                form.append("u", appKey);
+
+                // ★★★ ユーザーAPIキー使用時はユーザーのキーを使用 ★★★
+                if (isUsingUserKey) {
+                    form.append("u", userApiKey);
+                    console.log(`[proxyAmiVoice] Using User API Key for ${uid}`);
+                } else {
+                    form.append("u", appKey);
+                    console.log(`[proxyAmiVoice] Using App API Key for ${uid}`);
+                }
 
 
                 // ★ UltimateプランはloggingOptOutを強制的にTrueに設定
@@ -567,8 +620,12 @@ exports.proxyAmiVoice = functions.https.onRequest(async (req, res) => {
 
         try {
             const pollUrl = `${AMIVOICE_URL}/${sessionId}`;
+
+            // ★★★ ユーザーAPIキー使用時はユーザーのキーを使用 ★★★
+            const apiKeyToUse = isUsingUserKey ? userApiKey : appKey;
+
             const response = await axios.get(pollUrl, {
-                headers: { "Authorization": `Bearer ${appKey}` }
+                headers: { "Authorization": `Bearer ${apiKeyToUse}` }
             });
             res.status(response.status).send(response.data);
         } catch (error) {

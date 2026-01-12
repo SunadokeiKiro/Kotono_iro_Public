@@ -12,6 +12,10 @@ public class ApiConfig : ScriptableObject
     [Tooltip("音声認識APIのベースURL")]
     [SerializeField]
     private string apiUrlBase = "https://acp-api-async.amivoice.com/v1/recognitions";
+    
+    [Tooltip("Cloud FunctionsのベースURL")]
+    [SerializeField]
+    private string cloudFunctionsBaseUrl = "https://us-central1-kotono-iro-project.cloudfunctions.net";
 
     [Header("Request Parameters")]
     [Tooltip("リクエストの'd'パラメータに設定する値")]
@@ -21,5 +25,6 @@ public class ApiConfig : ScriptableObject
 
     // プロパティを介して外部から値を取得できるようにする
     public string ApiUrlBase => apiUrlBase;
+    public string CloudFunctionsBaseUrl => cloudFunctionsBaseUrl;
     public string DParameter => dParameter;
 }
