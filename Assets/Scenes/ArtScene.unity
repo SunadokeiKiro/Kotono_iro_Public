@@ -23794,6 +23794,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5367953f2c08f1640a285708e2c8e96c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FirestoreManager
+  apiConfig: {fileID: 11400000, guid: 6060da4f02a6ddb4488d103a54b130a8, type: 2}
 --- !u!114 &1571571194
 MonoBehaviour:
   m_ObjectHideFlags: 0

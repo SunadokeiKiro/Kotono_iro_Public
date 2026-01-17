@@ -1,10 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    package="com.yourcompany.kotono_iro">
+    package="com.hourglass.Kotonoiro">
 
-    <!-- 広告IDの使用を明示的に拒否 -->
-    <!-- Google Play Consoleで広告を使用していないことを宣言するため -->
+    <application
+        android:allowBackup="true"
+        android:icon="@mipmap/app_icon"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/app_icon_round"
+        android:supportsRtl="true">
+
+        <activity android:name="com.unity3d.player.UnityPlayerActivity"
+                  android:theme="@style/UnityThemeSelector"
+                  android:exported="true"
+                  android:configChanges="fontScale|layoutDirection|keyboard|keyboardHidden|longSize|mcc|mnc|navigation|orientation|screenLayout|screenSize|smallestScreenSize|uiMode|touchscreen">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <meta-data android:name="unityplayer.UnityActivity" android:value="true" />
+        </activity>
+    </application>
+
     <uses-permission android:name="com.google.android.gms.permission.AD_ID" tools:node="remove" />
 
 </manifest>

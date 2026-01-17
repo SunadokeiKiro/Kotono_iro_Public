@@ -14,9 +14,9 @@ public class MicrophoneController : MonoBehaviour
 
     // --- 設定値 (SettingsManagerからロード) ---
     private int recordLengthSec = 20;
-    private float voiceDetectionThreshold = 0.01f; // Default lowered
+    private float voiceDetectionThreshold = 0.05f; // ★ 固定値に変更
     private float silenceDetectionTime = 2.0f;
-    // [SerializeField] private float inputGain = 5.0f; // Deleted
+    private float inputGain = 5.0f; // ★ 新規追加: ユーザー設定のゲイン
     private const int SAMPLE_RATE = 44100;
 
     // --- 内部状態 ---
@@ -126,8 +126,9 @@ public class MicrophoneController : MonoBehaviour
                 silenceDetectionTime = settings.silenceDetectionTime;
                 recordLengthSec = settings.recordLengthSec;
                 selectedMicrophoneDevice = settings.selectedMicrophone;
+                inputGain = settings.inputGain; // ★ ゲイン読み込み追加
 
-                Debug.Log($"Microphone settings loaded: Threshold={voiceDetectionThreshold}, SilenceTime={silenceDetectionTime}s, RecordLength={recordLengthSec}s, MicDevice='{selectedMicrophoneDevice}'");
+                Debug.Log($"Microphone settings loaded: Threshold={voiceDetectionThreshold}, SilenceTime={silenceDetectionTime}s, RecordLength={recordLengthSec}s, Gain={inputGain}x, MicDevice='{selectedMicrophoneDevice}'");
             }
             else
             {
@@ -640,7 +641,10 @@ public class MicrophoneController : MonoBehaviour
         {
             sum += sample * sample;
         }
-        return Mathf.Sqrt(sum / samples.Length);
+        float rawRms = Mathf.Sqrt(sum / samples.Length);
+        
+        // ★ ユーザー設定のゲインを適用
+        return rawRms * inputGain;
     }
 
     /// <summary>
@@ -687,7 +691,7 @@ public class MicrophoneController : MonoBehaviour
 
     /// <summary>
     /// 音声データを正規化して音量を最適化します。
-    /// 小さい音声を自動的に適切なレベルまで増幅します。
+    /// ユーザー設定のゲインを基準に、必要に応じて追加の増幅を行います。
     /// </summary>
     /// <param name="clip">入力オーディオクリップ</param>
     /// <param name="targetPeak">目標ピークレベル（0.0〜1.0）</param>
@@ -715,18 +719,30 @@ public class MicrophoneController : MonoBehaviour
             return clip;
         }
         
-        // 3. ゲイン計算（最大15倍まで - それ以上だとノイズが目立つ）
-        float gain = Mathf.Min(targetPeak / maxAbs, 15f);
+        // ★ 3. ユーザー設定のゲインを基準に計算
+        float effectiveGain = inputGain;
         
-        // 4. 10%以上の増幅が必要な場合のみ適用
-        if (gain > 1.1f)
+        // 目標ピークに達していない場合のみ追加ゲイン
+        float peakAfterUserGain = maxAbs * inputGain;
+        if (peakAfterUserGain < targetPeak)
         {
-            Debug.Log($"[Audio Normalize] Peak={maxAbs:F4} -> Applying Gain={gain:F2}x");
-            
+            // ユーザーゲインの2倍までの追加増幅を許可
+            effectiveGain = Mathf.Min(targetPeak / maxAbs, inputGain * 2f);
+            Debug.Log($"[Audio Normalize] Peak={maxAbs:F4}, UserGain={inputGain:F1}x -> EffectiveGain={effectiveGain:F2}x");
+        }
+        else
+        {
+            Debug.Log($"[Audio Normalize] Peak={maxAbs:F4} with UserGain={inputGain:F1}x - Volume sufficient.");
+            effectiveGain = inputGain;
+        }
+        
+        // 4. ゲインを適用
+        if (effectiveGain > 1.01f)
+        {
             for (int i = 0; i < audioSamples.Length; i++)
             {
                 // クリッピング防止
-                audioSamples[i] = Mathf.Clamp(audioSamples[i] * gain, -1f, 1f);
+                audioSamples[i] = Mathf.Clamp(audioSamples[i] * effectiveGain, -1f, 1f);
             }
             
             // 新しいAudioClipを作成
@@ -742,7 +758,6 @@ public class MicrophoneController : MonoBehaviour
         }
         else
         {
-            Debug.Log($"[Audio Normalize] Peak={maxAbs:F4} - Volume sufficient, no normalization needed.");
             return clip; // 増幅不要
         }
     }

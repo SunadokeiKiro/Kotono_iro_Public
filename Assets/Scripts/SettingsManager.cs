@@ -19,14 +19,15 @@ public class SettingsManager : MonoBehaviour
     [SerializeField] private TMP_Dropdown microphoneDropdown;
     [SerializeField] private Slider recordLengthSlider;
     [SerializeField] private Text recordLengthValueText;
-    [SerializeField] private Slider thresholdSlider;
-    [SerializeField] private Text thresholdValueText;
+    [SerializeField] private Slider gainSlider; // ★ ゲインスライダー
+    [SerializeField] private Text gainValueText; // ★ ゲイン値表示
     [SerializeField] private Slider silenceTimeSlider;
     [SerializeField] private Text silenceTimeText;
 
     [Header("音声モニター")]
     [SerializeField] private Image voiceLevelBar;
-    [SerializeField] private Image thresholdLineMarker;
+    [SerializeField] private Image thresholdLineMarker; // ★ 固定位置に変更
+    [SerializeField] private Image peakHoldMarker; // ★ ピークホールド表示用
     [SerializeField] private Text currentLevelText;
 
     [Header("UI要素")]
@@ -43,6 +44,14 @@ public class SettingsManager : MonoBehaviour
     private float[] samplesData;
     private float currentVoiceLevel = 0f;
     private bool isMonitoring = false;
+    
+    // ★ ピークホールド用
+    private float peakLevel = 0f;
+    private float peakHoldTimer = 0f;
+    private const float PEAK_HOLD_DURATION = 1.0f;
+    
+    // ★ 固定閾値
+    private const float FIXED_THRESHOLD = 0.05f;
 
     /// <summary>
     /// マイク設定をシリアライズするためのデータクラス。
@@ -52,8 +61,9 @@ public class SettingsManager : MonoBehaviour
     {
         public string selectedMicrophone = "";
         public int recordLengthSec = 20;
-        public float voiceDetectionThreshold = 0.02f;
+        public float voiceDetectionThreshold = 0.05f; // ★ 固定値に変更
         public float silenceDetectionTime = 2.0f;
+        public float inputGain = 5.0f; // ★ 新規追加 (1.0〜20.0)
     }
 
     private MicSettings micSettings = new MicSettings();
@@ -76,9 +86,10 @@ public class SettingsManager : MonoBehaviour
             if(recordLengthValueText) recordLengthValueText.gameObject.SetActive(false); 
         }
 
-        // recordLengthSlider.onValueChanged.AddListener(OnRecordLengthChanged);
-        thresholdSlider.onValueChanged.AddListener(OnThresholdChanged);
-        silenceTimeSlider.onValueChanged.AddListener(OnSilenceTimeChanged);
+        // ★ ゲインスライダーのリスナー
+        if (gainSlider != null) gainSlider.onValueChanged.AddListener(OnGainChanged);
+        if (silenceTimeSlider != null) silenceTimeSlider.onValueChanged.AddListener(OnSilenceTimeChanged);
+
 
         // 保存されている設定を読み込んでUIに反映
         LoadApiKey();
@@ -92,6 +103,9 @@ public class SettingsManager : MonoBehaviour
 
         // サンプルデータ用の配列を初期化
         samplesData = new float[1024];
+        
+        // ★ 閾値マーカーを固定位置に設定
+        UpdateThresholdMarkerPosition();
 
         // マイクモニタリングを開始
         StartMicrophoneMonitoring();
@@ -104,18 +118,18 @@ public class SettingsManager : MonoBehaviour
         // Global styling
         UIStyler.ApplyStyleToInputField(apiKeyInput); // Overload exists for TMP_InputField
         UIStyler.ApplyStyleToSlider(recordLengthSlider);
-        UIStyler.ApplyStyleToSlider(thresholdSlider);
+        UIStyler.ApplyStyleToSlider(gainSlider); // ★ ゲインスライダーに変更
         UIStyler.ApplyStyleToSlider(silenceTimeSlider);
         UIStyler.ApplyStyleToButton(saveButton);
         UIStyler.ApplyStyleToButton(backButton, isIconOnly: true);
-        if (logoutButton != null) UIStyler.ApplyStyleToButton(logoutButton, isIconOnly: false); // Style logout button
+        if (logoutButton != null) UIStyler.ApplyStyleToButton(logoutButton, isIconOnly: false);
         
         // Settings page specific text colors
         UIStyler.ApplyStyleToText(recordLengthValueText);
-        UIStyler.ApplyStyleToText(thresholdValueText);
+        UIStyler.ApplyStyleToText(gainValueText); // ★ ゲイン値に変更
         UIStyler.ApplyStyleToText(silenceTimeText);
         UIStyler.ApplyStyleToTMP(statusText, isHeader: true);
-        UIStyler.ApplyStyleToTMP(currentPlanText, isHeader: true); // Changed to use TMP method
+        UIStyler.ApplyStyleToTMP(currentPlanText, isHeader: true);
         UIStyler.ApplyStyleToText(currentLevelText);
     }
 
@@ -170,17 +184,12 @@ public class SettingsManager : MonoBehaviour
     /// </summary>
     private void InitializeSliderRanges()
     {
-        // if (recordLengthSlider != null)
-        // {
-        //     recordLengthSlider.minValue = 1f;
-        //     recordLengthSlider.maxValue = 60f;
-        //     recordLengthSlider.wholeNumbers = true;
-        // }
-        if (thresholdSlider != null)
+        // ★ ゲインスライダーの範囲設定
+        if (gainSlider != null)
         {
-            thresholdSlider.minValue = 0.001f;
-            thresholdSlider.maxValue = 0.2f;
-            thresholdSlider.wholeNumbers = false;
+            gainSlider.minValue = 1.0f;
+            gainSlider.maxValue = 20.0f;
+            gainSlider.wholeNumbers = false;
         }
         if (silenceTimeSlider != null)
         {
@@ -279,14 +288,15 @@ public class SettingsManager : MonoBehaviour
                 Debug.Log("Microphone settings loaded.");
             }
             
-            // recordLengthSlider.value = Mathf.Clamp(micSettings.recordLengthSec, recordLengthSlider.minValue, recordLengthSlider.maxValue);
-            thresholdSlider.value = Mathf.Clamp(micSettings.voiceDetectionThreshold, thresholdSlider.minValue, thresholdSlider.maxValue);
-            silenceTimeSlider.value = Mathf.Clamp(micSettings.silenceDetectionTime, silenceTimeSlider.minValue, silenceTimeSlider.maxValue);
+            // ★ ゲイン値をスライダーに反映
+            if (gainSlider != null)
+                gainSlider.value = Mathf.Clamp(micSettings.inputGain, gainSlider.minValue, gainSlider.maxValue);
+            if (silenceTimeSlider != null)
+                silenceTimeSlider.value = Mathf.Clamp(micSettings.silenceDetectionTime, silenceTimeSlider.minValue, silenceTimeSlider.maxValue);
             
             UpdateRecordLengthText();
-            UpdateThresholdValueText();
+            UpdateGainValueText();
             UpdateSilenceTimeText();
-            UpdateThresholdMarkerPosition();
         }
         catch (Exception e)
         {
@@ -373,9 +383,9 @@ public class SettingsManager : MonoBehaviour
                 micSettings.selectedMicrophone = microphoneDropdown.options[microphoneDropdown.value].text;
             }
 
-            // micSettings.recordLengthSec = (int)recordLengthSlider.value;
-            micSettings.voiceDetectionThreshold = thresholdSlider.value;
-            micSettings.silenceDetectionTime = silenceTimeSlider.value;
+            // ★ ゲイン値を保存（閾値は固定）
+            if (gainSlider != null) micSettings.inputGain = gainSlider.value;
+            if (silenceTimeSlider != null) micSettings.silenceDetectionTime = silenceTimeSlider.value;
 
             string json = JsonUtility.ToJson(micSettings, true);
             File.WriteAllText(micSettingsFilePath, json);
@@ -396,23 +406,23 @@ public class SettingsManager : MonoBehaviour
 
     void UpdateRecordLengthText()
     {
-        if (recordLengthValueText != null)
+        if (recordLengthValueText != null && recordLengthSlider != null)
         {
             recordLengthValueText.text = recordLengthSlider.value.ToString("F0") + "秒";
         }
     }
 
-    void OnThresholdChanged(float value)
+    // ★ ゲインスライダーのイベントハンドラ
+    void OnGainChanged(float value)
     {
-        UpdateThresholdValueText();
-        UpdateThresholdMarkerPosition();
+        UpdateGainValueText();
     }
 
-    void UpdateThresholdValueText()
+    void UpdateGainValueText()
     {
-        if (thresholdValueText != null)
+        if (gainValueText != null && gainSlider != null)
         {
-            thresholdValueText.text = thresholdSlider.value.ToString("F3");
+            gainValueText.text = $"{gainSlider.value:F1}x";
         }
     }
     
@@ -479,12 +489,32 @@ public class SettingsManager : MonoBehaviour
 
         microphoneClip.GetData(samplesData, micPosition - samplesData.Length);
 
+        // ★ RMS計算（MicrophoneControllerと同じ方式）
         float sum = 0f;
         foreach (float sample in samplesData)
         {
-            sum += Mathf.Abs(sample);
+            sum += sample * sample;
         }
-        currentVoiceLevel = sum / samplesData.Length;
+        float rawRms = Mathf.Sqrt(sum / samplesData.Length);
+        
+        // ★ ユーザー設定のゲインを適用
+        float gain = (gainSlider != null) ? gainSlider.value : 5f;
+        currentVoiceLevel = rawRms * gain;
+        
+        // ★ ピークホールド処理
+        if (currentVoiceLevel > peakLevel)
+        {
+            peakLevel = currentVoiceLevel;
+            peakHoldTimer = PEAK_HOLD_DURATION;
+        }
+        else
+        {
+            peakHoldTimer -= Time.deltaTime;
+            if (peakHoldTimer <= 0)
+            {
+                peakLevel = Mathf.Lerp(peakLevel, currentVoiceLevel, 0.1f);
+            }
+        }
 
         UpdateVoiceLevelUI();
     }
@@ -493,10 +523,38 @@ public class SettingsManager : MonoBehaviour
     {
         if (voiceLevelBar != null)
         {
-            float maxDisplayValue = thresholdSlider.maxValue * 2.0f;
-            voiceLevelBar.fillAmount = Mathf.Clamp01(currentVoiceLevel / maxDisplayValue);
-
-            voiceLevelBar.color = (currentVoiceLevel > thresholdSlider.value) ? Color.green : Color.gray;
+            // ★ 固定閾値を基準に表示
+            float maxDisplay = Mathf.Max(FIXED_THRESHOLD * 3f, 0.2f);
+            voiceLevelBar.fillAmount = Mathf.Clamp01(currentVoiceLevel / maxDisplay);
+            
+            // ★ 色の遷移ロジック（グレー → 黄 → 緑）
+            float ratio = currentVoiceLevel / FIXED_THRESHOLD;
+            Color barColor;
+            if (ratio >= 1.0f)
+            {
+                barColor = Color.green; // 閾値超え
+            }
+            else if (ratio >= 0.7f)
+            {
+                barColor = Color.Lerp(Color.yellow, Color.green, (ratio - 0.7f) / 0.3f);
+            }
+            else
+            {
+                barColor = Color.Lerp(Color.gray, Color.yellow, ratio / 0.7f);
+            }
+            voiceLevelBar.color = barColor;
+        }
+        
+        // ★ ピークホールドマーカーの更新
+        if (peakHoldMarker != null && voiceLevelBar != null)
+        {
+            float maxDisplay = Mathf.Max(FIXED_THRESHOLD * 3f, 0.2f);
+            RectTransform barRect = voiceLevelBar.rectTransform;
+            RectTransform markerRect = peakHoldMarker.rectTransform;
+            float peakX = Mathf.Clamp01(peakLevel / maxDisplay) * barRect.rect.width;
+            Vector2 pos = markerRect.anchoredPosition;
+            pos.x = peakX;
+            markerRect.anchoredPosition = pos;
         }
 
         if (currentLevelText != null)
@@ -505,6 +563,9 @@ public class SettingsManager : MonoBehaviour
         }
     }
     
+    /// <summary>
+    /// 閾値マーカーを固定位置に設定します。
+    /// </summary>
     void UpdateThresholdMarkerPosition()
     {
         if (thresholdLineMarker != null && voiceLevelBar != null)
@@ -513,7 +574,9 @@ public class SettingsManager : MonoBehaviour
             RectTransform markerRect = thresholdLineMarker.rectTransform;
 
             float barWidth = barRect.rect.width;
-            float normalizedThreshold = Mathf.InverseLerp(thresholdSlider.minValue, thresholdSlider.maxValue, thresholdSlider.value);
+            // ★ 固定閾値の位置を計算
+            float maxDisplay = Mathf.Max(FIXED_THRESHOLD * 3f, 0.2f);
+            float normalizedThreshold = FIXED_THRESHOLD / maxDisplay;
             
             Vector2 anchoredPosition = markerRect.anchoredPosition;
             anchoredPosition.x = normalizedThreshold * barWidth;
