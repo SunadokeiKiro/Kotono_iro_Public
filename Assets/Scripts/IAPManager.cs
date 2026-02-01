@@ -23,6 +23,13 @@ public class IAPManager : MonoBehaviour, IDetailedStoreListener
     // Callbacks
     public event Action OnPurchaseSuccess;
     public event Action<string> OnIAPPurchaseFailed;
+    public event Action OnPurchaseStarted;   // ★ 購入開始イベント
+    public event Action OnPurchaseCompleted; // ★ 購入完了イベント（成功/失敗問わず）
+
+    /// <summary>
+    /// 購入処理中かどうか
+    /// </summary>
+    public bool IsPurchasing { get; private set; } = false;
 
     private void Awake()
     {
@@ -70,6 +77,8 @@ public class IAPManager : MonoBehaviour, IDetailedStoreListener
             if (product != null && product.availableToPurchase)
             {
                 Debug.Log($"[IAPManager] Purchasing: {product.definition.id}");
+                IsPurchasing = true;
+                OnPurchaseStarted?.Invoke();
                 controller.InitiatePurchase(product);
             }
             else
@@ -114,6 +123,8 @@ public class IAPManager : MonoBehaviour, IDetailedStoreListener
         // クライアント側では通常の購入処理を行うだけでOK。
         Debug.Log($"[IAPManager] Purchasing with offer eligibility: {offerId}");
         Debug.Log($"[IAPManager] Note: Google Play will apply the offer if eligible.");
+        IsPurchasing = true;
+        OnPurchaseStarted?.Invoke();
         controller.InitiatePurchase(product);
     }
 
@@ -197,6 +208,8 @@ public class IAPManager : MonoBehaviour, IDetailedStoreListener
                          Debug.Log($"[IAPManager] Plan Sync Completed. Success: {success}");
                          // Notify UI *after* plan is synced
                          OnPurchaseSuccess?.Invoke();
+                         IsPurchasing = false;
+                         OnPurchaseCompleted?.Invoke();
                          
                          // Then sync quota (optional order, but good to do)
                          StartCoroutine(SubscriptionManager.Instance.SyncQuotaWithServer(null));
@@ -212,6 +225,8 @@ public class IAPManager : MonoBehaviour, IDetailedStoreListener
             {
                 Debug.LogError($"[IAPManager] Receipt verification failed: {error}");
                 OnIAPPurchaseFailed?.Invoke("Verification failed: " + error);
+                IsPurchasing = false;
+                OnPurchaseCompleted?.Invoke();
             });
         }
         else
@@ -226,11 +241,15 @@ public class IAPManager : MonoBehaviour, IDetailedStoreListener
     {
         Debug.LogError($"[IAPManager] Purchase Failed: {product.definition.id}, Reason: {failureReason}");
         OnIAPPurchaseFailed?.Invoke(failureReason.ToString());
+        IsPurchasing = false;
+        OnPurchaseCompleted?.Invoke();
     }
     public void OnPurchaseFailed(Product product, PurchaseFailureDescription failureDescription)
     {
          Debug.LogError($"[IAPManager] Purchase Failed: {product.definition.id}, Reason: {failureDescription.message}");
          OnIAPPurchaseFailed?.Invoke(failureDescription.message);
+         IsPurchasing = false;
+         OnPurchaseCompleted?.Invoke();
     }
 
     // --- Utility Methods ---

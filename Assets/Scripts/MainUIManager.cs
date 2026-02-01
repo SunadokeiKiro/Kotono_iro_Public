@@ -20,9 +20,10 @@ public class MainUIManager : MonoBehaviour
     [SerializeField] private Button settingsButton;
     [SerializeField] private Button galleryButton; 
     [SerializeField] private Button closeArchiveButton; // 追加: アーカイブモード終了ボタン
+    [SerializeField] private Button helpButton; // 追加: チュートリアル開始ボタン
     [SerializeField] private Button autoRecordOnButton;
     [SerializeField] private Button autoRecordOffButton;
-    [SerializeField] private Text autoRecordStatusText;
+    [SerializeField] private TextMeshProUGUI autoRecordStatusText;
     
     [Header("Panels")]
     [SerializeField] private GalleryPanelController galleryPanel; 
@@ -71,6 +72,7 @@ public class MainUIManager : MonoBehaviour
         if (microphoneController != null)
         {
             microphoneController.OnRecordingStateChanged += UpdateRecButtonState;
+            microphoneController.OnBusyStateChanged += UpdateBusyState;
         }
 
         // ★ Firebase Auth Subscription
@@ -98,6 +100,12 @@ public class MainUIManager : MonoBehaviour
             {
                 userIdText.text = "ID: ...";
             }
+        }
+
+        // ★ Session Expiry Event Subscription
+        if (SessionManager.Instance != null)
+        {
+            SessionManager.Instance.OnSessionExpired += OnSessionExpiredHandler;
         }
 
         // Ensure UI starts in a clean state
@@ -147,6 +155,15 @@ public class MainUIManager : MonoBehaviour
             {
                 string fullId = user.UserId;
                 userIdText.text = $"ID: {(fullId.Length > 6 ? fullId.Substring(0, 6) + "..." : fullId)}";
+                
+                // ★ セッション登録（デバイス制限機能）
+                if (SessionManager.Instance != null)
+                {
+                    StartCoroutine(SessionManager.Instance.RegisterSession((success) => {
+                        if (success) Debug.Log("[MainUIManager] Device session registered successfully.");
+                        else Debug.LogWarning("[MainUIManager] Failed to register device session.");
+                    }));
+                }
             }
             else
             {
@@ -205,9 +222,11 @@ public class MainUIManager : MonoBehaviour
         UIStyler.ApplyStyleToButton(autoRecordOnButton, isIconOnly: false);
         UIStyler.ApplyStyleToButton(autoRecordOffButton, isIconOnly: false);
         UIStyler.ApplyStyleToButton(autoRecordOffButton, isIconOnly: false);
+        UIStyler.ApplyStyleToButton(autoRecordOffButton, isIconOnly: false);
         UIStyler.ApplyStyleToButton(toggleDetailsButton, isIconOnly: true); // Icon or small button
+        UIStyler.ApplyStyleToButton(helpButton, isIconOnly: true); // Help Icon
 
-        if (autoRecordStatusText != null) UIStyler.ApplyStyleToText(autoRecordStatusText); // Base style
+        if (autoRecordStatusText != null) UIStyler.ApplyStyleToTMP(autoRecordStatusText); // Base style
 
         // Apply styles to New 4-Axis UI
         UIStyler.ApplyStyleToTMP(valenceText);
@@ -232,6 +251,11 @@ public class MainUIManager : MonoBehaviour
             settingsButton.onClick.AddListener(() => {
                 if(microphoneController != null && microphoneController.IsRecordingOrAnalyzing) return;
                 SceneTransitionManager.Instance.LoadScene("SettingsScene");
+            });
+
+        if(helpButton)
+            helpButton.onClick.AddListener(() => {
+                if (TutorialManager.Instance != null) TutorialManager.Instance.StartMainTutorial(this);
             });
         
         // Gallery Panel Control
@@ -396,7 +420,7 @@ public class MainUIManager : MonoBehaviour
             if (autoRecordStatusText)
             {
                 // Force Update Style first to reset unwanted overrides
-                UIStyler.ApplyStyleToText(autoRecordStatusText);
+                UIStyler.ApplyStyleToTMP(autoRecordStatusText);
                 autoRecordStatusText.text = label;
                 autoRecordStatusText.color = Color.yellow;
             }
@@ -404,7 +428,7 @@ public class MainUIManager : MonoBehaviour
         else
         {
             // 通常モード: ボタン復帰
-            if (recButton) recButton.gameObject.SetActive(true);
+            UpdateRecButtonVisibility(); // Use helper to respect Busy state
             if (settingsButton) settingsButton.gameObject.SetActive(true);
             if (galleryButton) galleryButton.gameObject.SetActive(true);
             
@@ -677,15 +701,17 @@ public class MainUIManager : MonoBehaviour
 
     // --- UI Update Helper ---
     
+    private bool isSystemBusy = false; // Tracks Recording OR Analyzing state
+
     private void UpdateBusyState(bool isBusy)
     {
+        isSystemBusy = isBusy;
         SetRecordingMode(isBusy);
+        UpdateRecButtonVisibility();
     }
 
     private void UpdateRecButtonState(bool isRecording)
     {
-        // SetRecordingMode call moved to UpdateBusyState to cover Analysis time too.
-
         if (recButton != null)
         {
             var text = recButton.GetComponentInChildren<TMPro.TextMeshProUGUI>();
@@ -694,8 +720,28 @@ public class MainUIManager : MonoBehaviour
                 text.text = isRecording ? "STOP" : "REC";
                 text.color = isRecording ? Color.red : Color.white;
             }
+            UpdateRecButtonVisibility();
         }
     }
+
+    private void UpdateRecButtonVisibility()
+    {
+        if (recButton == null) return;
+
+        // Hide RecButton ONLY if Busy (Analyzing) AND Not Recording
+        // (If Recording, we need it visible to show "STOP")
+        bool shouldShow = !isSystemBusy || (isSystemBusy && (microphoneController != null && microphoneController.IsRecording));
+        
+        // Archive Mode overrides everything (already handled in SetArchiveMode, but let's be safe)
+        if (isArchiveMode) shouldShow = false;
+
+        recButton.gameObject.SetActive(shouldShow);
+    }
+
+    // --- Tutorial References ---
+    public RectTransform RecButtonRect => recButton != null ? recButton.GetComponent<RectTransform>() : null;
+    public RectTransform GalleryButtonRect => galleryButton != null ? galleryButton.GetComponent<RectTransform>() : null;
+    public RectTransform SettingsButtonRect => settingsButton != null ? settingsButton.GetComponent<RectTransform>() : null;
 
     void OnDestroy()
     {
@@ -707,5 +753,17 @@ public class MainUIManager : MonoBehaviour
         
         // Unsubscribe from Auth State Changes
         Firebase.Auth.FirebaseAuth.DefaultInstance.StateChanged -= AuthStateChanged;
+
+        if (SessionManager.Instance != null)
+        {
+            SessionManager.Instance.OnSessionExpired -= OnSessionExpiredHandler;
+        }
+    }
+
+    private void OnSessionExpiredHandler(string message)
+    {
+        MainThreadDispatcher.Enqueue(() => {
+            ShowBlockingMessage(message, true);
+        });
     }
 }

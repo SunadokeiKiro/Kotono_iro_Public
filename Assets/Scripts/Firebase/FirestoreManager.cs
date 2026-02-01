@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Networking; // ★ Added for UnityWebRequest
 using System.Collections;
 using System.Collections.Generic;
 using System;
@@ -229,73 +230,10 @@ public class FirestoreManager : MonoBehaviour
     }
 
 
-    /// <summary>
-    /// Save TotalSentiments to Firestore: users/{uid}/monthly_data/{monthKey}_stats
-    /// </summary>
-    public void SaveTotalSentiments(string monthKey, TotalSentiments data)
-    {
-         if (!FirebaseConfig.Instance.IsInitialized || Firebase.Auth.FirebaseAuth.DefaultInstance.CurrentUser == null) return;
 
-         var userId = Firebase.Auth.FirebaseAuth.DefaultInstance.CurrentUser.UserId;
-         var db = Firebase.Firestore.FirebaseFirestore.DefaultInstance;
-         // 別ドキュメントとして保存 (例: "2023-11_stats")
-         var docRef = db.Collection("users").Document(userId).Collection("monthly_data").Document($"{monthKey}_stats");
-
-         string json = JsonUtility.ToJson(data); 
-         
-         Dictionary<string, object> map = new Dictionary<string, object>
-         {
-             { "json_data", json },
-             { "last_updated", Firebase.Firestore.FieldValue.ServerTimestamp }
-         };
-
-         docRef.SetAsync(map).ContinueWith(tsk => {
-             if(tsk.IsFaulted) Debug.LogError($"[Firestore] Failed to save stats: {tsk.Exception}");
-         });
-    }
-
-    /// <summary>
-    /// Load TotalSentiments from Firestore.
-    /// </summary>
-    public void LoadTotalSentiments(string monthKey, Action<TotalSentiments> onSuccess, Action<string> onFailure)
-    {
-        if (!FirebaseConfig.Instance.IsInitialized || Firebase.Auth.FirebaseAuth.DefaultInstance.CurrentUser == null)
-        {
-            onFailure?.Invoke("Not initialized");
-            return;
-        }
-
-        var userId = Firebase.Auth.FirebaseAuth.DefaultInstance.CurrentUser.UserId;
-        var db = Firebase.Firestore.FirebaseFirestore.DefaultInstance;
-        var docRef = db.Collection("users").Document(userId).Collection("monthly_data").Document($"{monthKey}_stats");
-
-        docRef.GetSnapshotAsync().ContinueWith(task =>
-        {
-            if (task.IsFaulted)
-            {
-                MainThreadDispatcher.Enqueue(() => onFailure?.Invoke(task.Exception.Message));
-                return;
-            }
-
-            if (task.IsCompleted)
-            {
-                var snapshot = task.Result;
-                if (snapshot.Exists && snapshot.TryGetValue("json_data", out string json))
-                {
-                    try {
-                        TotalSentiments data = JsonUtility.FromJson<TotalSentiments>(json);
-                        MainThreadDispatcher.Enqueue(() => onSuccess?.Invoke(data));
-                    } catch { 
-                        MainThreadDispatcher.Enqueue(() => onSuccess?.Invoke(new TotalSentiments())); 
-                    }
-                }
-                else
-                {
-                    MainThreadDispatcher.Enqueue(() => onSuccess?.Invoke(new TotalSentiments()));
-                }
-            }
-        });
-    }
+    // ---------------------------------------------------------
+    // Subscription & Plan Plan Management
+    // ---------------------------------------------------------
 
 
     /// <summary>
@@ -550,7 +488,14 @@ public class FirestoreManager : MonoBehaviour
                 {
                     var response = JsonUtility.FromJson<MonthlyDataListResponse>(request.downloadHandler.text);
                     List<string> months = new List<string>(response.accessibleMonths ?? new string[0]);
-                    Debug.Log($"[Firestore] GetMonthlyDataList via CF: {months.Count} accessible, {response.lockedMonths?.Length ?? 0} locked");
+                    
+                    // Add locked months to the list so they appear in the UI (marked as locked)
+                    if (response.lockedMonths != null && response.lockedMonths.Length > 0)
+                    {
+                        months.AddRange(response.lockedMonths);
+                    }
+
+                    Debug.Log($"[Firestore] GetMonthlyDataList via CF: {response.accessibleMonths?.Length ?? 0} accessible, {response.lockedMonths?.Length ?? 0} locked. Total: {months.Count}");
                     onSuccess?.Invoke(months);
                 }
                 catch (Exception ex)
@@ -973,51 +918,50 @@ public class FirestoreManager : MonoBehaviour
     // Calls Cloud Functions to prevent race conditions
     // ---------------------------------------------------------
 
-    [System.Serializable]
-    private class QuotaRequest
+    /// <summary>
+    /// Call Cloud Function 'reserveQuota' to reserve usage time before recording.
+    /// Returns a reservation ID (token) to be used for consumption.
+    /// </summary>
+    public void ReserveQuotaOnServer(float estimatedSeconds, Action<string, float> onSuccess, Action<string> onFailure)
     {
-        public string yearMonth;
-        public float requestedSeconds;
-        public float actualSeconds;
-        public float releasedSeconds;
+         if (!FirebaseConfig.Instance.IsInitialized || Firebase.Auth.FirebaseAuth.DefaultInstance.CurrentUser == null)
+         {
+             onFailure?.Invoke("Not initialized or logged in");
+             return;
+         }
+
+         StartCoroutine(ReserveQuotaCoroutine(estimatedSeconds, onSuccess, onFailure));
     }
 
     [System.Serializable]
-    public class QuotaReserveResponse
+    private class ReserveQuotaResponse
     {
         public bool success;
         public float reserved;
         public float remaining;
         public string message;
+        public string reservationId;
     }
 
-    /// <summary>
-    /// Reserve quota via Cloud Function before recording starts.
-    /// </summary>
-    public IEnumerator ReserveQuotaOnServer(string yearMonth, float requestedSeconds, Action<QuotaReserveResponse> onComplete)
+    private IEnumerator ReserveQuotaCoroutine(float estimatedSeconds, Action<string, float> onSuccess, Action<string> onFailure)
     {
         var user = Firebase.Auth.FirebaseAuth.DefaultInstance.CurrentUser;
-        if (user == null)
-        {
-            onComplete?.Invoke(new QuotaReserveResponse { success = false, message = "Not logged in" });
-            yield break;
-        }
-
-        // Get Auth Token
         var tokenTask = user.TokenAsync(false);
         yield return new WaitUntil(() => tokenTask.IsCompleted);
 
         if (tokenTask.Exception != null)
         {
-            onComplete?.Invoke(new QuotaReserveResponse { success = false, message = "Token Error" });
+            onFailure?.Invoke("Token Error: " + tokenTask.Exception.Message);
             yield break;
         }
 
         string idToken = tokenTask.Result;
         string url = $"{apiConfig.CloudFunctionsBaseUrl}/reserveQuota";
+        
+        // YearMonth
+        string yearMonth = System.DateTime.Now.ToString("yyyy-MM");
 
-        var requestData = new QuotaRequest { yearMonth = yearMonth, requestedSeconds = requestedSeconds };
-        string jsonBody = JsonUtility.ToJson(requestData);
+        string jsonBody = $"{{\"yearMonth\":\"{yearMonth}\", \"estimatedSeconds\":{estimatedSeconds}}}";
 
         using (UnityEngine.Networking.UnityWebRequest request = new UnityEngine.Networking.UnityWebRequest(url, "POST"))
         {
@@ -1031,66 +975,114 @@ public class FirestoreManager : MonoBehaviour
 
             if (request.result == UnityEngine.Networking.UnityWebRequest.Result.Success)
             {
-                var response = JsonUtility.FromJson<QuotaReserveResponse>(request.downloadHandler.text);
-                Debug.Log($"[Firestore] Quota Reserved: {response.reserved}s, Remaining: {response.remaining}s");
-                onComplete?.Invoke(response);
+                var response = JsonUtility.FromJson<ReserveQuotaResponse>(request.downloadHandler.text);
+                if (response.success)
+                {
+                    Debug.Log($"[Firestore] Quota Reserved: {response.reserved}s. Token: {response.reservationId}");
+                    onSuccess?.Invoke(response.reservationId, response.reserved);
+                }
+                else
+                {
+                    onFailure?.Invoke(response.message);
+                }
             }
             else
             {
-                Debug.LogError($"[Firestore] ReserveQuota Failed: {request.error}");
-                onComplete?.Invoke(new QuotaReserveResponse { success = false, message = request.error });
+                 Debug.LogError($"[Firestore] ReserveQuota Failed: {request.error}");
+                 onFailure?.Invoke(request.error); // Handle 403 (Quota Exceeded)
             }
         }
     }
 
+
+
+    // ---------------------------------------------------------
+    // Activity Log & Streak Features
+    // ---------------------------------------------------------
+
     /// <summary>
-    /// Consume quota via Cloud Function after recording completes.
+    /// Fetch Activity Log (Map of date -> count) from Firestore.
+    /// Path: users/{uid}/private_data/activity_log
     /// </summary>
-    public IEnumerator ConsumeQuotaOnServer(string yearMonth, float actualSeconds, Action<bool> onComplete)
+    public void GetActivityLog(Action<Dictionary<string, int>> onSuccess, Action<string> onFailure)
     {
-        var user = Firebase.Auth.FirebaseAuth.DefaultInstance.CurrentUser;
-        if (user == null)
+        if (!FirebaseConfig.Instance.IsInitialized || Firebase.Auth.FirebaseAuth.DefaultInstance.CurrentUser == null)
         {
-            onComplete?.Invoke(false);
-            yield break;
+            onFailure?.Invoke("Not initialized or logged in");
+            return;
         }
 
-        // Get Auth Token
-        var tokenTask = user.TokenAsync(false);
-        yield return new WaitUntil(() => tokenTask.IsCompleted);
+        var userId = Firebase.Auth.FirebaseAuth.DefaultInstance.CurrentUser.UserId;
+        var db = Firebase.Firestore.FirebaseFirestore.DefaultInstance;
+        var docRef = db.Collection("users").Document(userId).Collection("private_data").Document("activity_log");
 
-        if (tokenTask.Exception != null)
+        docRef.GetSnapshotAsync().ContinueWith(task =>
         {
-            onComplete?.Invoke(false);
-            yield break;
-        }
-
-        string idToken = tokenTask.Result;
-        string url = $"{apiConfig.CloudFunctionsBaseUrl}/consumeQuota";
-
-        var requestData = new QuotaRequest { yearMonth = yearMonth, actualSeconds = actualSeconds, releasedSeconds = actualSeconds };
-        string jsonBody = JsonUtility.ToJson(requestData);
-
-        using (UnityEngine.Networking.UnityWebRequest request = new UnityEngine.Networking.UnityWebRequest(url, "POST"))
-        {
-            byte[] bodyRaw = System.Text.Encoding.UTF8.GetBytes(jsonBody);
-            request.uploadHandler = new UnityEngine.Networking.UploadHandlerRaw(bodyRaw);
-            request.downloadHandler = new UnityEngine.Networking.DownloadHandlerBuffer();
-            request.SetRequestHeader("Content-Type", "application/json");
-            request.SetRequestHeader("Authorization", "Bearer " + idToken);
-
-            yield return request.SendWebRequest();
-
-            if (request.result == UnityEngine.Networking.UnityWebRequest.Result.Success)
+            if (task.IsFaulted)
             {
-                Debug.Log($"[Firestore] Quota Consumed: {actualSeconds}s");
-                onComplete?.Invoke(true);
+                MainThreadDispatcher.Enqueue(() => onFailure?.Invoke(task.Exception.Flatten().InnerExceptions[0].Message));
+                return;
+            }
+
+            if (task.IsCompleted)
+            {
+                var snapshot = task.Result;
+                var activityMap = new Dictionary<string, int>();
+
+                if (snapshot.Exists && snapshot.ContainsField("history"))
+                {
+                    try
+                    {
+                        var historyObj = snapshot.GetValue<Dictionary<string, object>>("history");
+                        foreach (var kvp in historyObj)
+                        {
+                            activityMap[kvp.Key] = Convert.ToInt32(kvp.Value);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.LogWarning($"[Firestore] Failed to parse activity history: {ex.Message}");
+                    }
+                }
+                
+                MainThreadDispatcher.Enqueue(() => onSuccess?.Invoke(activityMap));
+            }
+        });
+    }
+
+    /// <summary>
+    /// Increment the activity count for a specific date.
+    /// Uses FieldValue.Increment for atomic updates.
+    /// </summary>
+    public void IncrementActivity(string dateKey, Action onSuccess, Action<string> onFailure)
+    {
+        if (!FirebaseConfig.Instance.IsInitialized || Firebase.Auth.FirebaseAuth.DefaultInstance.CurrentUser == null)
+        {
+            onFailure?.Invoke("Not initialized or logged in");
+            return;
+        }
+
+        var userId = Firebase.Auth.FirebaseAuth.DefaultInstance.CurrentUser.UserId;
+        var db = Firebase.Firestore.FirebaseFirestore.DefaultInstance;
+        var docRef = db.Collection("users").Document(userId).Collection("private_data").Document("activity_log");
+
+        Dictionary<string, object> updateData = new Dictionary<string, object>
+        {
+            { $"history.{dateKey}", Firebase.Firestore.FieldValue.Increment(1) },
+            { "last_updated", Firebase.Firestore.FieldValue.ServerTimestamp }
+        };
+
+        docRef.SetAsync(updateData, Firebase.Firestore.SetOptions.MergeAll).ContinueWith(task =>
+        {
+            if (task.IsFaulted)
+            {
+                 MainThreadDispatcher.Enqueue(() => onFailure?.Invoke(task.Exception.Flatten().InnerExceptions[0].Message));
             }
             else
             {
-                Debug.LogError($"[Firestore] ConsumeQuota Failed: {request.error}");
-                onComplete?.Invoke(false);
+                 Debug.Log($"[Firestore] Incremented activity for {dateKey}");
+                 MainThreadDispatcher.Enqueue(() => onSuccess?.Invoke());
             }
-        }
+        });
     }
 }

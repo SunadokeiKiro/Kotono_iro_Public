@@ -28,6 +28,7 @@ public class GalleryManager : MonoBehaviour
 
     private string selectedMonthKey; // 例: "2023-11"
     private List<GameObject> activeButtons = new List<GameObject>();
+    private bool isRefreshing = false; // Prevent duplicate calls
 
     void Start()
     {
@@ -56,10 +57,13 @@ public class GalleryManager : MonoBehaviour
     /// </summary>
     public void RefreshGalleryList()
     {
+        if (isRefreshing) return; // Ignore if already refreshing
+        isRefreshing = true;
+
         // 既存のボタンをクリア (テンプレート以外)
         foreach (var btn in activeButtons)
         {
-            Destroy(btn);
+            if (btn != null) Destroy(btn);
         }
         activeButtons.Clear();
 
@@ -67,6 +71,7 @@ public class GalleryManager : MonoBehaviour
         {
             Debug.LogError("GalleryManager: Content Parent or Button Template is not assigned.");
             if (messageText != null) messageText.text = "Error: UI Not Assigned";
+            isRefreshing = false;
             return;
         }
 
@@ -93,6 +98,7 @@ public class GalleryManager : MonoBehaviour
                 if (messageText != null) messageText.text = msg;
                 if (statusText != null) statusText.text = msg; // Fallback
                 
+                isRefreshing = false; // Reset flag
             }, (error) => {
                 // Failure
                 string err = $"取得エラー: {error}";
@@ -100,11 +106,13 @@ public class GalleryManager : MonoBehaviour
                 if (statusText != null) statusText.text = err; // Fallback
                 
                 Debug.LogError($"[GalleryManager] Failed to fetch list: {error}");
+                isRefreshing = false; // Reset flag
             });
         }
         else
         {
              if (messageText != null) messageText.text = "Error: FirestoreManager Missing";
+             isRefreshing = false;
         }
     }
 
@@ -146,14 +154,20 @@ public class GalleryManager : MonoBehaviour
             }
             else
             {
-                // 制限かかっている場合
-                if (btnComp != null) btnComp.interactable = false;
-                if (btnImg != null) btnImg.color = Color.gray;
+                // ★ 制限がかかっている場合でもボタンは押せるようにする（ロック表示）
+                if (btnComp != null)
+                {
+                    string key = monthKey; // クロージャ用
+                    btnComp.onClick.AddListener(() => ShowLockedMonthDialog(key));
+                }
+                
+                // 視覚的にロック状態を示す（半透明 + 🔒アイコン）
+                if (btnImg != null) btnImg.color = new Color(0.5f, 0.5f, 0.5f, 0.7f);
                 
                 if (btnText != null)
                 {
-                    btnText.text += " (Locked)";
-                    btnText.color = Color.gray;
+                    btnText.text += "  🔒";
+                    btnText.color = new Color(0.7f, 0.7f, 0.7f);
                 }
             }
         }
@@ -201,6 +215,48 @@ public class GalleryManager : MonoBehaviour
         {
             Debug.LogError("GameDataManager instance not found!");
             if (statusText != null) statusText.text = "エラー: データマネージャーが見つかりません";
+        }
+    }
+
+    /// <summary>
+    /// ロックされた月のデータにアクセスしようとした時にメッセージを表示
+    /// </summary>
+    private void ShowLockedMonthDialog(string monthKey)
+    {
+        Debug.Log($"[GalleryManager] Locked month clicked: {monthKey}");
+        
+        string planName = "Free";
+        string upgradeHint = "Standard以上";
+        
+        if (SubscriptionManager.Instance != null)
+        {
+            var plan = SubscriptionManager.Instance.CurrentPlan;
+            planName = plan.ToString();
+            
+            // プランに応じたアップグレード提案
+            if (plan == PlanType.Free)
+            {
+                upgradeHint = "Standard（6カ月）またはPremium（無制限）";
+            }
+            else if (plan == PlanType.Standard)
+            {
+                upgradeHint = "Premium（無制限）";
+            }
+        }
+        
+        string message = $"🔒 このデータはロックされています\n\n" +
+                         $"現在のプラン: {planName}\n" +
+                         $"アクセスするには {upgradeHint} プランへのアップグレードが必要です。";
+        
+        // メッセージを表示
+        if (messageText != null)
+        {
+            messageText.text = message;
+            messageText.color = new Color(1f, 0.7f, 0.3f); // 警告色（オレンジ）
+        }
+        if (statusText != null)
+        {
+            statusText.text = message;
         }
     }
 

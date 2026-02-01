@@ -322,31 +322,18 @@ public class MicrophoneController : MonoBehaviour
             }
         }
 
-        // ★★★ 3. サーバー側でクォータを予約（セキュリティ強化） ★★★
-        bool quotaReserved = false;
-        float serverRemaining = 0f;
-        
+        // ★ セッション管理方式へ移行のため、予約ロジックを削除。
+        // クォータチェックはクライアント側の事前チェックと、サーバー側の実消費時チェックで行う。
         if (SubscriptionManager.Instance != null)
         {
-            yield return SubscriptionManager.Instance.ReserveQuotaOnServer(
-                currentMaxDuration, 
-                (success, remaining) => {
-                    quotaReserved = success;
-                    serverRemaining = remaining;
-                }
-            );
-            
-            if (!quotaReserved)
+            float remaining = SubscriptionManager.Instance.GetRemainingQuotaSeconds();
+            if (remaining <= 0)
             {
-                Debug.LogWarning("[MicrophoneController] Server quota reservation failed. Cannot start auto-recording.");
+                Debug.LogWarning("[MicrophoneController] No remaining quota. Cannot start auto-recording.");
                 mainUIManager.ShowBlockingMessage("月間制限に達しました", true);
-                
-                // 自動録音を継続するためリスニングを再開
                 if (IsAutoRecordEnabled) StartListening();
                 yield break;
             }
-            
-            Debug.Log($"[MicrophoneController] Quota reserved on server. Remaining: {serverRemaining:F1}s");
         }
 
         isRecording = true;
@@ -364,6 +351,7 @@ public class MicrophoneController : MonoBehaviour
             Debug.LogError("Microphone.Start failed (for automatic recording).");
             isRecording = false;
             mainUIManager.HideRecordingPanel();
+            OnBusyStateChanged?.Invoke(false); // ★ Fix: Reset busy state
             if (IsAutoRecordEnabled) StartListening(); 
             yield break;
         }
@@ -459,28 +447,17 @@ public class MicrophoneController : MonoBehaviour
             }
         }
         
-        // ★★★ 3. サーバー側でクォータを予約（セキュリティ強化） ★★★
-        bool quotaReserved = false;
-        float serverRemaining = 0f;
-        
+        // ★ セッション管理方式へ移行のため、予約ロジックを削除。
+        // クォータチェックはクライアント側の事前チェックと、サーバー側の実消費時チェックで行う。
         if (SubscriptionManager.Instance != null)
         {
-            yield return SubscriptionManager.Instance.ReserveQuotaOnServer(
-                currentMaxDuration, 
-                (success, remaining) => {
-                    quotaReserved = success;
-                    serverRemaining = remaining;
-                }
-            );
-            
-            if (!quotaReserved)
+            float remaining = SubscriptionManager.Instance.GetRemainingQuotaSeconds();
+            if (remaining <= 0)
             {
-                Debug.LogWarning("[MicrophoneController] Server quota reservation failed. Cannot start manual recording.");
+                Debug.LogWarning("[MicrophoneController] No remaining quota. Cannot start manual recording.");
                 mainUIManager.ShowBlockingMessage("月間制限に達しました", true);
                 yield break;
             }
-            
-            Debug.Log($"[MicrophoneController] Quota reserved on server. Remaining: {serverRemaining:F1}s");
         }
 
         isRecording = true;
@@ -514,8 +491,9 @@ public class MicrophoneController : MonoBehaviour
         {
             Debug.LogError($"CRITICAL: Microphone.Start failed. Cause: {e.Message}");
             mainUIManager.HideRecordingPanel();
-            mainUIManager.ShowBlockingMessage($"マイク起動エラー:\\n{e.Message}", true);
+            mainUIManager.ShowBlockingMessage($"マイク起動エラー:\n{e.Message}", true);
             isRecording = false;
+            OnBusyStateChanged?.Invoke(false); // ★ Fix: Ensure UI comes back
             yield break;
         }
 
@@ -524,7 +502,8 @@ public class MicrophoneController : MonoBehaviour
             Debug.LogError("Microphone.Start returned null.");
             isRecording = false;
             mainUIManager.HideRecordingPanel();
-            mainUIManager.ShowBlockingMessage("マイク初期化失敗\\n(Null Return)", true);
+            mainUIManager.ShowBlockingMessage("マイク初期化失敗\n(Null Return)", true);
+            OnBusyStateChanged?.Invoke(false); // ★ Fix: Ensure UI comes back
             yield break;
         }
 
@@ -588,7 +567,7 @@ public class MicrophoneController : MonoBehaviour
                 SaveWavFile(audioFilePath, processedClip);
                 
                 mainUIManager.HideRecordingPanel(); 
-                apiHandler.StartAnalysis(audioFilePath, wasAuto); // ★ 自動録音フラグを渡す
+                apiHandler.StartAnalysis(audioFilePath, wasAuto); // ★ セッション管理方式へ移行
                 
                 // ★ イベント発火 (自動かどうかを通知)
                 OnRecordingFinished?.Invoke(duration, wasAuto);

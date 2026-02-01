@@ -172,6 +172,12 @@ public class SubscriptionManager : MonoBehaviour
     public bool CanUseAutoRecord => currentPlan == PlanType.Premium || currentPlan == PlanType.Ultimate;
 
     /// <summary>
+    /// スケジュール機能を使用できるかどうか。Premium/Ultimate限定。
+    /// CanUseAutoRecordと同じ条件です。
+    /// </summary>
+    public bool CanUseSchedule => currentPlan == PlanType.Premium || currentPlan == PlanType.Ultimate;
+
+    /// <summary>
     /// ギャラリーで閲覧可能な過去の月数を返します。
     /// </summary>
     public int GetAllowedHistoryMonths()
@@ -261,50 +267,15 @@ public class SubscriptionManager : MonoBehaviour
         Debug.Log($"[SubscriptionManager] Quota Consumed: {seconds:F1}s. Total Used: {currentStatus.usedSeconds:F1}s / {GetMonthlyQuotaSeconds()}s");
         SaveSubscriptionStatus();
         
-        // ★★★ Cloud Functions経由でサーバーに消費を記録（セキュリティ強化）★★★
-        if (FirestoreManager.Instance != null)
-        {
-            string ym = $"{currentStatus.year}-{currentStatus.month:D2}";
-            // Cloud Functionsを呼び出し（非同期、失敗しても録音は継続）
-            StartCoroutine(FirestoreManager.Instance.ConsumeQuotaOnServer(ym, seconds, (success) => {
-                if (!success)
-                {
-                    Debug.LogWarning("[SubscriptionManager] Failed to sync quota consumption to server. Will retry on next sync.");
-                }
-            }));
-        }
+        // ★★★ Client-Side Consumption Removed (Server handles it now) ★★★
+        // if (FirestoreManager.Instance != null) { ... }
     }
 
     /// <summary>
-    /// ★ サーバー側でクォータを予約（レース条件防止）
+    /// ★ サーバー側でクォータを予約（レース条件防止、トークン発行）
     /// 録音開始前に呼び出す
     /// </summary>
-    public IEnumerator ReserveQuotaOnServer(float requestedSeconds, System.Action<bool, float> onComplete)
-    {
-        if (FirestoreManager.Instance == null)
-        {
-            onComplete?.Invoke(false, 0f);
-            yield break;
-        }
 
-        CheckAndResetMonthlyStatus();
-        string ym = $"{currentStatus.year}-{currentStatus.month:D2}";
-
-        FirestoreManager.QuotaReserveResponse response = null;
-        yield return FirestoreManager.Instance.ReserveQuotaOnServer(ym, requestedSeconds, (r) => response = r);
-
-        if (response != null && response.success)
-        {
-            Debug.Log($"[SubscriptionManager] Quota Reserved: {response.reserved}s, Remaining: {response.remaining}s");
-            onComplete?.Invoke(true, response.remaining);
-        }
-        else
-        {
-            string msg = response?.message ?? "Unknown error";
-            Debug.LogWarning($"[SubscriptionManager] Quota Reservation Failed: {msg}");
-            onComplete?.Invoke(false, 0f);
-        }
-    }
 
     /// <summary>
     /// サーバー時刻・データと同期を行います。

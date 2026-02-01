@@ -37,6 +37,14 @@ service cloud.firestore {
       match /history/{document=**} {
         allow read, write: if isOwner(userId);
       }
+      
+      // ★ セッション管理用（デバイス制限）
+      // 読み取り: 本人のみ許可 (セッション状態確認用)
+      // 書き込み: Cloud Functions (Admin SDK) からのみ許可
+      match /sessions/{document=**} {
+        allow read: if isOwner(userId);
+        allow write: if false;
+      }
     }
   }
 }

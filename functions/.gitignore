@@ -5,3 +5,8 @@ node_modules/
 .env
 .env.*
 !.env.example
+
+# Logs
+*_log.txt
+log_output.txt
+deploy_log.txt

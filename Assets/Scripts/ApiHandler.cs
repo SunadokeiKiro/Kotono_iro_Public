@@ -333,8 +333,6 @@ public class SentimentResult
     private IEnumerator PostRequest(string audioFilePath, bool isAutoRecord = false)
     {
         Debug.Log($"Sending audio recognition request... (isAutoRecord={isAutoRecord})");
-        // IsAnalyzing = true; // Moved to StartAnalysis
-        // mainUIManager.ShowLoading(...); // Moved to StartAnalysis or updated there
 
         byte[] audioData;
         try { audioData = File.ReadAllBytes(audioFilePath); }
@@ -359,6 +357,8 @@ public class SentimentResult
             // ★ 修正: Firebase Auth Token は常に必要
             string authToken = "";
             var user = FirebaseAuth.DefaultInstance.CurrentUser;
+            StartCoroutine(CheckPendingSessionsRecovery()); // Fire and forget recovery check if needed, or maybe not here.
+            
             if (user != null)
             {
                 var task = user.TokenAsync(false);
@@ -376,11 +376,28 @@ public class SentimentResult
                     Debug.Log("[ApiHandler] Sending User API Key via header");
                 }
                 
+                // ★ 修正: Device ID を送信 (Session-Based Security)
+                // ★ 400エラー対策: DeviceIdがない場合は送信しない（事前にエラーにする）
+                string deviceId = SessionManager.Instance != null ? SessionManager.Instance.DeviceId : null;
+                if (string.IsNullOrEmpty(deviceId))
+                {
+                     Debug.LogError("[ApiHandler] Device ID is missing. Aborting request.");
+                     mainUIManager.HideProcessingMessage();
+                     mainUIManager.ShowBlockingMessage("デバイスIDエラー: 再起動してください", true);
+                     IsAnalyzing = false;
+                     OnAnalysisCompleted?.Invoke();
+                     yield break;
+                }
+                request.SetRequestHeader("X-Device-Id", deviceId);
+                
                 // ★ 修正: Firebase Auth Token を常に送信
                 if (!string.IsNullOrEmpty(authToken))
                 {
                     request.SetRequestHeader("Authorization", "Bearer " + authToken);
                 }
+
+                // ★ アップロードタイムアウト設定 (60秒)
+                request.timeout = 60;
 
                 // ★ 非同期でリクエスト開始（進捗表示のため）
                 var asyncOp = request.SendWebRequest();
@@ -415,9 +432,28 @@ public class SentimentResult
                 else
                 {
                     long code = request.responseCode;
-                    Debug.LogWarning($"Request failed. Code: {code}, KeyType: {(isUsingAppKey ? "App" : "User")}");
+                    string errorBody = request.downloadHandler.text; // エラー時のレスポンスボディ取得
+                    Debug.LogWarning($"Request failed. Code: {code}, KeyType: {(isUsingAppKey ? "App" : "User")}\nBody: {errorBody}");
 
-                    // 401 Unauthorized で、かつUserKeyを使っていた場合 -> AppKeyにフォールバック
+                    // ★★★ セッション切れチェック (401 SESSION_EXPIRED) ★★★
+                    // Cloud Functionは error: "SESSION_EXPIRED" を含むJSONを返すはず
+                    if (code == 401 && !string.IsNullOrEmpty(errorBody))
+                    {
+                        if (errorBody.Contains("SESSION_EXPIRED"))
+                        {
+                            Debug.LogError("[ApiHandler] Session Expired detected.");
+                            SessionManager.Instance?.HandleSessionExpired("他の端末でログインされたため、セッションが切れました。");
+                            
+                            mainUIManager.HideProcessingMessage();
+                            mainUIManager.ShowBlockingMessage("セッションエラー\n他の端末でログインされました", true); // HandleSessionExpiredでもUI出すなら重複注意
+                            
+                            IsAnalyzing = false;
+                            OnAnalysisCompleted?.Invoke();
+                            yield break;
+                        }
+                    }
+
+                    // 401/403 で、かつUserKeyを使っていた場合 -> AppKeyにフォールバック (セッション切れ以外)
                     if ((code == 401 || code == 403) && !isUsingAppKey && !fallbackTriggered)
                     {
                         Debug.Log("User Key unauthorized. Attempting fallback to App Key...");
@@ -446,6 +482,9 @@ public class SentimentResult
             }
         }
     }
+
+    private IEnumerator CheckPendingSessionsRecovery() { yield return null; } // Dummy placeholder if method missing context
+
 
     /// <summary>
     /// APIエラーコードに基づいてユーザー向けのエラーメッセージを構築します。
@@ -615,19 +654,23 @@ public class SentimentResult
             if (task.Exception == null) authToken = task.Result;
         }
 
-        const int maxPolls = 100;
-        const float pollInterval = 4f;
+        // ★ 設定変更: 120秒タイムアウト (1秒間隔 x 120回)
+        const int maxPolls = 120;
+        const float pollInterval = 1f;
 
         for (int i = 0; i < maxPolls; i++)
         {
             using (UnityWebRequest request = UnityWebRequest.Get(pollUrl))
             {
+                // ★ タイムアウト設定 (通信自体のタイムアウト)
+                request.timeout = 10;
+
                 // ★ 修正: ユーザーAPIキー使用時はヘッダーで送信
                 if (!string.IsNullOrEmpty(userApiKey) && activeApiKey == userApiKey)
                 {
                     request.SetRequestHeader("X-User-Api-Key", activeApiKey);
                 }
-                
+
                 // ★ 修正: Firebase Auth Token を常に送信
                 if (!string.IsNullOrEmpty(authToken))
                 {
@@ -649,21 +692,41 @@ public class SentimentResult
                 }
                 else
                 {
-                     // 通信エラーでも、まだ諦めるべきではないかもしれないが、
-                     // 404など致命的なら削除すべき。ここでは4xx系ならRecoveryから削除して諦めるなどの判断も必要だが、
-                     // 安全側に倒して「削除しない」でおく（次回起動時に再トライ）
+                     // ★ サーバーエラー(500番台)の場合は即座に諦める
+                     if (request.responseCode >= 500)
+                     {
+                         Debug.LogError($"[ApiHandler] Server Error during polling: {request.responseCode}");
+                         
+                         // エラー表示
+                         string errorMsg = BuildApiErrorMessage(request.responseCode, request.error);
+                         mainUIManager.HideProcessingMessage();
+                         mainUIManager.ShowBlockingMessage(errorMsg, true);
+                         
+                         SessionRecoveryManager.RemoveSession(targetSessionId);
+                         IsAnalyzing = false;
+                         OnAnalysisCompleted?.Invoke();
+                         yield break;
+                     }
+
+                     // 404など致命的なら削除すべき
                      if(request.responseCode == 404) 
                      {
                          SessionRecoveryManager.RemoveSession(targetSessionId);
                          mainUIManager.HideProcessingMessage(); IsAnalyzing = false; OnAnalysisCompleted?.Invoke(); yield break;
                      }
-                     // 他のエラーはリトライ
+                     // 他のエラー(一時的な通信エラー等)はリトライ
                 }
             }
             mainUIManager.ShowProcessingMessage($"分析中... ({(i + 1) * pollInterval}s)");
             yield return new WaitForSeconds(pollInterval);
         }
-        mainUIManager.HideProcessingMessage(); IsAnalyzing = false; OnAnalysisCompleted?.Invoke();
+        
+        // ★ タイムアウト時の処理
+        Debug.LogError("[ApiHandler] Polling timed out.");
+        mainUIManager.HideProcessingMessage();
+        mainUIManager.ShowBlockingMessage("タイムアウト: サーバーからの応答がありませんでした", true);
+        IsAnalyzing = false; 
+        OnAnalysisCompleted?.Invoke();
     }
 
     // (HandlePollResponse, PrintResultsSummary, SaveLogは修正なし)

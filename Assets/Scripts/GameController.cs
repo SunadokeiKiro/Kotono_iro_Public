@@ -16,11 +16,11 @@ public class GameController : MonoBehaviour
     [SerializeField] private MainUIManager mainUIManager;
     [SerializeField] private VFXRippleManager vfxRippleManager; 
     [SerializeField] private SimpleCameraController cameraController; 
+    [SerializeField] private BackgroundGraphController graphController; // Added for Streak Feature 
 
     private ArtData currentArtData = new ArtData();
     // private string currentArtDataPath; // Removed local path
     
-    private TotalSentiments currentTotalSentiments = new TotalSentiments();
     // private string totalSentimentsPath; // Removed local path
 
     // 現在閲覧中の月Key (例: "2023-11")
@@ -103,6 +103,27 @@ public class GameController : MonoBehaviour
         
 
         LoadWithCurrentSettings();
+        
+        // ★ Start Main Tutorial
+        if (TutorialManager.Instance != null && mainUIManager != null)
+        {
+             // データのロード開始後、少し待ってからチュートリアル確認
+             // (ローディング表示が終わった後くらいが望ましいが、ここでも可)
+             StartCoroutine(TriggerTutorialAfterDelay());
+        }
+    }
+
+    private IEnumerator TriggerTutorialAfterDelay()
+    {
+        // Auto-start tutorial logic removed as per user request (manual trigger only)
+        yield break; 
+        /*
+        yield return new WaitForSeconds(1.5f); // Wait for initial loading UI to settle
+        if (TutorialManager.Instance != null)
+        {
+            TutorialManager.Instance.StartMainTutorial(mainUIManager);
+        }
+        */
     }
 
     private void HandleAuthStateChanged(Firebase.Auth.FirebaseUser user)
@@ -214,8 +235,7 @@ public class GameController : MonoBehaviour
 
         currentArtData = new ArtData();
         currentArtData.emotionHistory = new List<EmotionPoint>();
-        currentTotalSentiments = new TotalSentiments();
-
+        
         // 2. Clear Visuals
         if (vfxRippleManager != null)
         {
@@ -367,6 +387,12 @@ public class GameController : MonoBehaviour
     {
         currentMonthKey = monthKey;
         Debug.Log($"Loading data for month: {monthKey}");
+
+        // ★ Update Graph
+        if (graphController != null)
+        {
+            graphController.GenerateGrid(monthKey);
+        }
         
         // アイドル回転を再開（フォーカス中なら解除）
         ClearFocus();
@@ -411,11 +437,12 @@ public class GameController : MonoBehaviour
                 // VFX更新
             UpdateVFXWithCurrentData();
 
+
             // Update UI (4-Axis)
             if (mainUIManager != null) mainUIManager.UpdateEmotionDisplay(currentArtData);
 
-            // 2. Total Sentimentsのロード (Chained)
-            LoadAndDisplayTotalSentiments(monthKey);
+            // Loading Done (Hidden here since ArtData was the last thing)
+            mainUIManager.HideBlockingMessage();
 
             }, (error) => {
                 // Error Callback
@@ -429,8 +456,7 @@ public class GameController : MonoBehaviour
                 currentArtData = new ArtData();
                 vfxRippleManager.ResetRipples();
                 
-                // Try loading stats anyway, but maybe let the user know
-                LoadAndDisplayTotalSentiments(monthKey); 
+                mainUIManager.HideBlockingMessage();
             });
         }
         else
@@ -469,9 +495,6 @@ public class GameController : MonoBehaviour
         }
     }
 
-
-
-    
     /// <summary>
     /// APIからの解析結果を受け取り、新しい感情ポイントを追加します。
     /// もし過去の月を閲覧中だった場合、自動的に現在の月に切り替えてから保存します。
@@ -525,8 +548,7 @@ public class GameController : MonoBehaviour
             // VFXに追加 (新規作成時もタイムスタンプと位置を渡す)
             vfxRippleManager.AddNewRipple(newEmotion.valence, newEmotion.arousal, newEmotion.thought, newEmotion.confidence, newEmotion.timestamp, newEmotion.position);
             
-            // 累計データの更新
-            UpdateTotalSentimentUI(response);
+            // 累計データ更新処理は削除されました (UpdateTotalSentimentUI)
 
             // --- Quota Consumption (実音声時間) ---
             if (SubscriptionManager.Instance != null)
@@ -538,10 +560,15 @@ public class GameController : MonoBehaviour
                 }
                 // starttime/endtime はミリ秒単位と想定 (AmiVoice仕様)
                 float totalSeconds = totalMilliseconds / 1000.0f;
-                // 万が一マイナスや異常値が来た場合のガード
                 if (totalSeconds < 0) totalSeconds = 0;
                 
                 SubscriptionManager.Instance.ConsumeQuota(totalSeconds);
+            }
+
+            // ★ Streak / Activity Log
+            if (StreakManager.Instance != null)
+            {
+                StreakManager.Instance.LogActivity();
             }
         }
         catch (Exception e)
@@ -713,94 +740,6 @@ public class GameController : MonoBehaviour
 
         Debug.Log($"Saved new emotion point (Cloud). Total: {currentArtData.emotionHistory.Count}");
         return newEmotion;
-    }
-
-    private void UpdateTotalSentimentUI(SentimentAnalysisResponse response)
-    {
-        // 累計値への加算
-        foreach (var seg in response.sentiment_analysis.segments)
-        {
-            currentTotalSentiments.totalEnergy += seg.energy;
-            currentTotalSentiments.totalContent += seg.content;
-            currentTotalSentiments.totalUpset += seg.upset;
-            currentTotalSentiments.totalAggression += seg.aggression;
-            currentTotalSentiments.totalStress += seg.stress;
-            currentTotalSentiments.totalUncertainty += seg.uncertainty;
-            currentTotalSentiments.totalExcitement += seg.excitement;
-            currentTotalSentiments.totalConcentration += seg.concentration;
-            currentTotalSentiments.totalEmoCog += seg.emo_cog;
-            currentTotalSentiments.totalHesitation += seg.hesitation;
-            currentTotalSentiments.totalBrainPower += seg.brain_power;
-            currentTotalSentiments.totalEmbarrassment += seg.embarrassment;
-            currentTotalSentiments.totalIntensiveThinking += seg.intensive_thinking;
-            currentTotalSentiments.totalImaginationActivity += seg.imagination_activity;
-            currentTotalSentiments.totalExtremeEmotion += seg.extreme_emotion;
-            currentTotalSentiments.totalPassionate += seg.passionate;
-            currentTotalSentiments.totalAtmosphere += seg.atmosphere;
-            currentTotalSentiments.totalAnticipation += seg.anticipation;
-            currentTotalSentiments.totalDissatisfaction += seg.dissatisfaction;
-            currentTotalSentiments.totalConfidence += seg.confidence;
-        }
-
-        // UI更新は削除 (New 4-Axis Display uses UpdateEmotionDisplay)
-        // mainUIManager.UpdateWorkSentimentUI(tempData); <--- REMOVED
-        SaveTotalSentiments();
-    }
-
-    private void LoadAndDisplayTotalSentiments(string monthKey)
-    {
-        if (FirestoreManager.Instance != null)
-        {
-            FirestoreManager.Instance.LoadTotalSentiments(monthKey, (data) => {
-                currentTotalSentiments = data;
-                // All Loading Done
-                mainUIManager.HideBlockingMessage();
-            }, (error) => {
-                Debug.LogError($"Failed to load stats: {error}");
-                currentTotalSentiments = new TotalSentiments();
-                mainUIManager.HideBlockingMessage();
-            });
-        }
-        else
-        {
-             // Missing Manager
-             mainUIManager.HideBlockingMessage();
-        }
-    }
-
-    private void SaveTotalSentiments()
-    {
-        if (FirestoreManager.Instance != null)
-        {
-            FirestoreManager.Instance.SaveTotalSentiments(currentMonthKey, currentTotalSentiments);
-        }
-    }
-    
-    private SceneData CreateTempSceneDataForUI()
-    {
-        // SceneDataは別ファイル定義だが、ここではUI表示用に一時オブジェクトとして使用
-        return new SceneData {
-            totalEnergy = this.currentTotalSentiments.totalEnergy,
-            totalContent = this.currentTotalSentiments.totalContent,
-            totalUpset = this.currentTotalSentiments.totalUpset,
-            totalAggression = this.currentTotalSentiments.totalAggression,
-            totalStress = this.currentTotalSentiments.totalStress,
-            totalUncertainty = this.currentTotalSentiments.totalUncertainty,
-            totalExcitement = this.currentTotalSentiments.totalExcitement,
-            totalConcentration = this.currentTotalSentiments.totalConcentration,
-            totalEmoCog = this.currentTotalSentiments.totalEmoCog,
-            totalHesitation = this.currentTotalSentiments.totalHesitation,
-            totalBrainPower = this.currentTotalSentiments.totalBrainPower,
-            totalEmbarrassment = this.currentTotalSentiments.totalEmbarrassment,
-            totalIntensiveThinking = this.currentTotalSentiments.totalIntensiveThinking,
-            totalImaginationActivity = this.currentTotalSentiments.totalImaginationActivity,
-            totalExtremeEmotion = this.currentTotalSentiments.totalExtremeEmotion,
-            totalPassionate = this.currentTotalSentiments.totalPassionate,
-            totalAtmosphere = this.currentTotalSentiments.totalAtmosphere,
-            totalAnticipation = this.currentTotalSentiments.totalAnticipation,
-            totalDissatisfaction = this.currentTotalSentiments.totalDissatisfaction,
-            totalConfidence = this.currentTotalSentiments.totalConfidence
-        };
     }
 }
 

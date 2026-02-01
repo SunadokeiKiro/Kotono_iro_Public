@@ -26,6 +26,10 @@ public class SubscriptionUIManager : MonoBehaviour
     [SerializeField] private GameObject apiKeyOfferBadge; // ★ APIキー特典バッジ
     [SerializeField] private TextMeshProUGUI apiKeyOfferBadgeText; // ★ 特典バッジテキスト
 
+    [Header("Purchase Loading Overlay")]
+    [SerializeField] private GameObject purchaseLoadingOverlay; // ★ ローディングオーバーレイ
+    [SerializeField] private TextMeshProUGUI purchaseLoadingText; // ★ ローディングテキスト
+
     private bool isApiKeyOfferEligible = false;
 
     void Start()
@@ -48,11 +52,17 @@ public class SubscriptionUIManager : MonoBehaviour
         {
             IAPManager.Instance.OnPurchaseSuccess += OnPurchaseSuccess;
             IAPManager.Instance.OnIAPPurchaseFailed += ShowErrorMessage;
+            IAPManager.Instance.OnPurchaseStarted += OnPurchaseStarted;   // ★ 追加
+            IAPManager.Instance.OnPurchaseCompleted += OnPurchaseCompleted; // ★ 追加
         }
 
         // APIキー特典資格をチェック
         CheckApiKeyOfferEligibility();
         RefreshUI();
+
+        // ★ 初期状態でオーバーレイを非表示
+        if (purchaseLoadingOverlay != null)
+            purchaseLoadingOverlay.SetActive(false);
     }
 
     void OnDestroy()
@@ -61,6 +71,8 @@ public class SubscriptionUIManager : MonoBehaviour
         {
             IAPManager.Instance.OnPurchaseSuccess -= OnPurchaseSuccess;
             IAPManager.Instance.OnIAPPurchaseFailed -= ShowErrorMessage;
+            IAPManager.Instance.OnPurchaseStarted -= OnPurchaseStarted;   // ★ 追加
+            IAPManager.Instance.OnPurchaseCompleted -= OnPurchaseCompleted; // ★ 追加
         }
     }
 
@@ -72,6 +84,32 @@ public class SubscriptionUIManager : MonoBehaviour
         ClearStatusMessage();
         isApiKeyOfferEligible = false; // 使用済みにする
         RefreshUI();
+    }
+
+    /// <summary>
+    /// 購入処理開始時の処理 - ローディングオーバーレイを表示
+    /// </summary>
+    private void OnPurchaseStarted()
+    {
+        Debug.Log("[SubscriptionUIManager] Purchase started - showing loading overlay");
+        if (purchaseLoadingOverlay != null)
+        {
+            purchaseLoadingOverlay.SetActive(true);
+            if (purchaseLoadingText != null)
+                purchaseLoadingText.text = "購入処理中...\nしばらくお待ちください";
+        }
+    }
+
+    /// <summary>
+    /// 購入処理完了時の処理 - ローディングオーバーレイを非表示
+    /// </summary>
+    private void OnPurchaseCompleted()
+    {
+        Debug.Log("[SubscriptionUIManager] Purchase completed - hiding loading overlay");
+        if (purchaseLoadingOverlay != null)
+        {
+            purchaseLoadingOverlay.SetActive(false);
+        }
     }
 
     /// <summary>

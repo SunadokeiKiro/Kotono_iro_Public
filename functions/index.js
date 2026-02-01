@@ -413,11 +413,12 @@ exports.proxyAmiVoice = functions.https.onRequest(async (req, res) => {
         return;
     }
 
-    // ★★★ 2.3 Check for User API Key ★★★
+
     const userApiKey = req.headers["x-user-api-key"];
     const isUsingUserKey = !!userApiKey;
 
     console.log(`[proxyAmiVoice] User ${uid} - Using ${isUsingUserKey ? "User API Key" : "App API Key"}`);
+
 
     // ★★★ 2.5 STRICT PLAN CHECK (Server-Side Enforcement) ★★★
     let currentPlan = "Free";
@@ -430,6 +431,7 @@ exports.proxyAmiVoice = functions.https.onRequest(async (req, res) => {
         console.log(`User ${uid} requesting API. Plan: ${currentPlan}`);
 
         // ★★★ App Key使用時のみFree Trial回数チェック ★★★
+
         if (!isUsingUserKey && currentPlan === "Free") {
             // ★ Freeユーザー: 永久3回（各最大10秒）のAppキー利用をチェック
             const freeTrialCount = subData.free_trial_count || 0;
@@ -476,12 +478,12 @@ exports.proxyAmiVoice = functions.https.onRequest(async (req, res) => {
             // Firestoreから使用量を取得
             const storedYm = subData.year_month || "";
             let usedSeconds = (storedYm === currentYearMonth) ? (subData.used_seconds || 0) : 0;
-            let reservedSeconds = (storedYm === currentYearMonth) ? (subData.reserved_seconds || 0) : 0;
+            // reserved_seconds check removed
 
-            const totalUsed = usedSeconds + reservedSeconds;
+            const totalUsed = usedSeconds;
             const remaining = maxQuota - totalUsed;
 
-            console.log(`[Quota Check] User ${uid} (${currentPlan}): Used=${usedSeconds}s, Reserved=${reservedSeconds}s, Remaining=${remaining}s / ${maxQuota}s`);
+            console.log(`[Quota Check] User ${uid} (${currentPlan}): Used=${usedSeconds}s, Remaining=${remaining}s / ${maxQuota}s`);
 
             if (remaining <= 0) {
                 console.warn(`[Quota Check] User ${uid}: Monthly quota exceeded`);
@@ -504,7 +506,7 @@ exports.proxyAmiVoice = functions.https.onRequest(async (req, res) => {
 
 
     // 3. Get App Key (User Key使用時は不要だが、フォールバック用に取得)
-    const appKey = functions.config().amivoice.appkey;
+    const appKey = process.env.AMIVOICE_APPKEY;
     if (!isUsingUserKey && !appKey) {
         console.error("Config Error: App Key missing");
         res.status(500).send("Server Configuration Error");
@@ -598,6 +600,54 @@ exports.proxyAmiVoice = functions.https.onRequest(async (req, res) => {
                     maxBodyLength: Infinity
                 });
 
+                // ★★★ Server-Side Quota Consumption (Token Based) ★★★
+                // Calculate duration from response and consume quota immediately.
+                if (response.status === 200 && response.data) {
+                    try {
+                        let durationSeconds = 0;
+                        if (response.data.segments) {
+                            let totalDurationMs = 0;
+                            response.data.segments.forEach(seg => {
+                                totalDurationMs += (seg.endtime - seg.starttime);
+                            });
+                            durationSeconds = totalDurationMs / 1000.0;
+                        } else if (response.data.text && !response.data.segments) {
+                            console.warn(`[proxyAmiVoice] No segments found. Duration set to 0.`);
+                        }
+
+                        if (durationSeconds < 0) durationSeconds = 0;
+
+                        // Execute Firestore Transaction
+                        const db = admin.firestore();
+                        const docRef = db.collection("users").doc(uid).collection("subscription").doc("status");
+
+                        await db.runTransaction(async (transaction) => {
+                            const doc = await transaction.get(docRef);
+                            const data = doc.exists ? doc.data() : {};
+
+                            const now = new Date();
+                            const currentYm = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+                            const storedYm = data.year_month || currentYm;
+
+                            let usedSeconds = (storedYm === currentYm) ? (data.used_seconds || 0) : 0;
+
+                            // Update stats
+                            usedSeconds += durationSeconds;
+
+                            transaction.set(docRef, {
+                                year_month: currentYm,
+                                used_seconds: usedSeconds,
+                                last_updated: admin.firestore.FieldValue.serverTimestamp()
+                            }, { merge: true });
+
+                            console.log(`[proxyAmiVoice] Consumed: ${durationSeconds}s. User: ${uid}`);
+                        });
+
+                    } catch (quotaError) {
+                        console.error("[proxyAmiVoice] Quota Consumption Failed:", quotaError);
+                    }
+                }
+
                 tmpFiles.forEach(f => { try { fs.unlinkSync(f); } catch (e) { } });
                 res.status(response.status).send(response.data);
 
@@ -689,8 +739,10 @@ exports.downgradePlan = functions.https.onRequest(async (req, res) => {
     }
 
     try {
+        const db = admin.firestore();
+
         // 5. Update Firestore (Admin SDK bypasses rules)
-        await admin.firestore()
+        await db
             .collection("users").doc(uid)
             .collection("subscription").doc("status")
             .set({
@@ -699,11 +751,151 @@ exports.downgradePlan = functions.https.onRequest(async (req, res) => {
                 downgrade_reason: "subscription_cancelled"
             }, { merge: true });
 
+        // ★ 6. Session Cleanup after Plan Downgrade
+        const deviceLimits = { "Free": 1, "Standard": 2, "Premium": 5, "Ultimate": 10 };
+        const newLimit = deviceLimits[newPlan] || 1;
+
+        const sessionsRef = db.collection("users").doc(uid).collection("sessions");
+        const sessionsSnap = await sessionsRef.orderBy("last_accessed", "asc").get();
+
+        if (sessionsSnap.size > newLimit) {
+            const toDelete = sessionsSnap.size - newLimit;
+            const batch = db.batch();
+            let deleted = 0;
+            sessionsSnap.forEach(doc => {
+                if (deleted < toDelete) {
+                    batch.delete(doc.ref);
+                    deleted++;
+                }
+            });
+            await batch.commit();
+            console.log(`[downgradePlan] Cleaned up ${deleted} sessions for user ${uid} (new limit: ${newLimit})`);
+        }
+
         console.log(`[downgradePlan] User ${uid} downgraded to ${newPlan}`);
         res.status(200).json({ success: true, plan: newPlan });
 
     } catch (error) {
         console.error("downgradePlan Error:", error);
+        res.status(500).send("Internal Server Error: " + error.message);
+    }
+});
+
+// -----------------------------
+// ★ Device Session Management (NEW)
+// Prevents concurrent usage abuse across multiple devices
+// -----------------------------
+
+/**
+ * Device Limits by Plan
+ */
+const DEVICE_LIMITS = {
+    "Free": 1,
+    "Standard": 2,
+    "Premium": 5,
+    "Ultimate": 10
+};
+
+/**
+ * Register or Update Device Session
+ * Called on app start/resume to register the device.
+ * Automatically removes oldest sessions if limit exceeded.
+ */
+exports.registerSession = functions.https.onRequest(async (req, res) => {
+    // 1. CORS
+    res.set("Access-Control-Allow-Origin", "*");
+    if (req.method === "OPTIONS") {
+        res.set("Access-Control-Allow-Methods", "POST");
+        res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+        res.status(204).send("");
+        return;
+    }
+    if (req.method !== "POST") {
+        res.status(405).send("Method Not Allowed");
+        return;
+    }
+
+    // 2. Validate Firebase Auth
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        res.status(401).send("Unauthorized");
+        return;
+    }
+    let uid;
+    try {
+        const idToken = authHeader.split("Bearer ")[1];
+        const decodedToken = await admin.auth().verifyIdToken(idToken);
+        uid = decodedToken.uid;
+    } catch (error) {
+        console.error("Auth Error (registerSession):", error);
+        res.status(401).send("Invalid Token");
+        return;
+    }
+
+    // 3. Parse Body
+    const { deviceId, deviceInfo, platform } = req.body;
+    if (!deviceId) {
+        res.status(400).send("Missing deviceId");
+        return;
+    }
+
+    try {
+        const db = admin.firestore();
+        const userRef = db.collection("users").doc(uid);
+        const statusRef = userRef.collection("subscription").doc("status");
+        const sessionsRef = userRef.collection("sessions");
+
+        // Get current plan
+        const statusDoc = await statusRef.get();
+        const plan = statusDoc.exists ? (statusDoc.data().plan || "Free") : "Free";
+        const maxDevices = DEVICE_LIMITS[plan] || 1;
+
+        // Get existing sessions
+        const sessionsSnap = await sessionsRef.orderBy("last_accessed", "asc").get();
+        const existingDeviceIds = sessionsSnap.docs.map(d => d.id);
+
+        // Check if this device is already registered
+        if (existingDeviceIds.includes(deviceId)) {
+            // Update last_accessed
+            await sessionsRef.doc(deviceId).update({
+                last_accessed: admin.firestore.FieldValue.serverTimestamp(),
+                device_info: deviceInfo || "",
+                platform: platform || ""
+            });
+            console.log(`[registerSession] User ${uid} device ${deviceId} refreshed.`);
+            res.status(200).json({ success: true, action: "refreshed" });
+            return;
+        }
+
+        // New device registration
+        // Check if we need to remove oldest session(s)
+        if (sessionsSnap.size >= maxDevices) {
+            const toRemove = sessionsSnap.size - maxDevices + 1; // +1 to make room for new device
+            const batch = db.batch();
+            let removed = 0;
+            sessionsSnap.forEach(doc => {
+                if (removed < toRemove) {
+                    batch.delete(doc.ref);
+                    console.log(`[registerSession] Removing old session: ${doc.id}`);
+                    removed++;
+                }
+            });
+            await batch.commit();
+        }
+
+        // Create new session
+        await sessionsRef.doc(deviceId).set({
+            last_accessed: admin.firestore.FieldValue.serverTimestamp(),
+            device_info: deviceInfo || "",
+            platform: platform || "",
+            created_at: admin.firestore.FieldValue.serverTimestamp()
+        });
+
+        console.log(`[registerSession] User ${uid} device ${deviceId} registered (Plan: ${plan}, Limit: ${maxDevices})`);
+        res.status(200).json({ success: true, action: "registered", plan: plan, limit: maxDevices });
+
+    } catch (error) {
+        console.error("registerSession Error:", error);
         res.status(500).send("Internal Server Error: " + error.message);
     }
 });
@@ -791,7 +983,11 @@ exports.reserveQuota = functions.https.onRequest(async (req, res) => {
             // Calculate how much can be reserved
             const actualReserved = Math.min(requestedSeconds, remaining);
 
-            // Update with reservation
+            // Create Reservation Document Reference
+            const reservationRef = db.collection("users").doc(uid).collection("subscription").doc("reservations").doc();
+            const reservationId = reservationRef.id;
+
+            // Update with reservation (Status Doc)
             transaction.set(docRef, {
                 year_month: yearMonth,
                 used_seconds: usedSeconds,
@@ -799,13 +995,22 @@ exports.reserveQuota = functions.https.onRequest(async (req, res) => {
                 last_updated: admin.firestore.FieldValue.serverTimestamp()
             }, { merge: true });
 
-            console.log(`[reserveQuota] User ${uid}: Reserved ${actualReserved}s. Total reserved: ${reservedSeconds + actualReserved}s`);
+            // Create Reservation Token Document
+            transaction.set(reservationRef, {
+                created_at: admin.firestore.FieldValue.serverTimestamp(),
+                reserved_seconds: actualReserved,
+                status: "active",
+                year_month: yearMonth
+            });
+
+            console.log(`[reserveQuota] User ${uid}: Reserved ${actualReserved}s. Token: ${reservationId}`);
 
             return {
                 success: true,
                 reserved: actualReserved,
                 remaining: remaining - actualReserved,
-                message: "Quota reserved"
+                message: "Quota reserved",
+                reservationId: reservationId // ★ Return Token
             };
         });
 
@@ -1300,6 +1505,8 @@ exports.getMonthlyData = functions.https.onRequest(async (req, res) => {
     }
 
     const monthKey = req.query.monthKey || req.body?.monthKey;
+    const dataType = req.query.dataType || req.body?.dataType || "main"; // "main" or "stats"
+
     if (!monthKey) {
         res.status(400).json({ success: false, message: "Missing monthKey" });
         return;
@@ -1325,22 +1532,29 @@ exports.getMonthlyData = functions.https.onRequest(async (req, res) => {
 
         const monthsDiff = calcMonthsDiff(monthKey, currentMonth);
         if (monthKey !== currentMonth && monthsDiff > maxMonths) {
-            console.log(`[getMonthlyData] Denied: ${uid} (${plan}) -> ${monthKey}`);
+            console.log(`[getMonthlyData] Denied: ${uid} (${plan}) -> ${monthKey} (Type: ${dataType})`);
             res.status(403).json({ success: false, message: "Access restricted by plan", plan, requiredPlan: monthsDiff <= 6 ? "Standard" : "Premium" });
             return;
         }
 
+        const docId = (dataType === "stats") ? `${monthKey}_stats` : monthKey;
         const doc = await admin.firestore()
             .collection("users").doc(uid)
-            .collection("monthly_data").doc(monthKey).get();
+            .collection("monthly_data").doc(docId).get();
 
         if (!doc.exists) {
+            // Stats might not exist for new months, return empty default instead of 404?
+            // Client expects empty if not found.
+            if (dataType === "stats") {
+                res.status(200).json({ success: true, monthKey, data: {}, isStats: true });
+                return;
+            }
             res.status(404).json({ success: false, message: "Data not found" });
             return;
         }
 
-        console.log(`[getMonthlyData] Granted: ${uid} (${plan}) -> ${monthKey}`);
-        res.status(200).json({ success: true, monthKey, data: doc.data() });
+        console.log(`[getMonthlyData] Granted: ${uid} (${plan}) -> ${docId} (Type: ${dataType})`);
+        res.status(200).json({ success: true, monthKey, data: doc.data(), isStats: (dataType === "stats") });
     } catch (error) {
         console.error("getMonthlyData Error:", error);
         res.status(500).send("Internal Server Error: " + error.message);

@@ -34,6 +34,7 @@ public class SettingsManager : MonoBehaviour
     [SerializeField] private Button saveButton;
     [SerializeField] private Button backButton;
     [SerializeField] private Button logoutButton; // Added
+    [SerializeField] private Button helpButton; // Added for Tutorial
     [SerializeField] private TextMeshProUGUI statusText;  // ★ Changed to TMP
     [SerializeField] private TextMeshProUGUI currentPlanText; // ★ Changed to TMP
 
@@ -80,6 +81,13 @@ public class SettingsManager : MonoBehaviour
         backButton.onClick.AddListener(GoBackToMainScene);
         if (logoutButton != null) logoutButton.onClick.AddListener(OnLogoutClick);
 
+        if (helpButton != null)
+        {
+            helpButton.onClick.AddListener(() => {
+                if (TutorialManager.Instance != null) TutorialManager.Instance.StartSettingsTutorial(this);
+            });
+        }
+
         if (recordLengthSlider != null) 
         {
             recordLengthSlider.gameObject.SetActive(false); // ★ ユーザー要望: 廃止のため非表示
@@ -111,7 +119,11 @@ public class SettingsManager : MonoBehaviour
         StartMicrophoneMonitoring();
 
         ApplyStyles();
+        
+        // ★ Start Settings Tutorial Logic Removed (Manual Trigger Only)
+        // if (TutorialManager.Instance != null ...)
     }
+
 
     private void ApplyStyles()
     {
@@ -123,6 +135,7 @@ public class SettingsManager : MonoBehaviour
         UIStyler.ApplyStyleToButton(saveButton);
         UIStyler.ApplyStyleToButton(backButton, isIconOnly: true);
         if (logoutButton != null) UIStyler.ApplyStyleToButton(logoutButton, isIconOnly: false);
+        if (helpButton != null) UIStyler.ApplyStyleToButton(helpButton, isIconOnly: true);
         
         // Settings page specific text colors
         UIStyler.ApplyStyleToText(recordLengthValueText);
@@ -615,4 +628,10 @@ public class SettingsManager : MonoBehaviour
     {
         StopMicrophoneMonitoring();
     }
+
+    // --- Tutorial References ---
+    public RectTransform GainSliderRect => gainSlider != null ? gainSlider.GetComponent<RectTransform>() : null;
+    public RectTransform VoiceLevelBarRect => voiceLevelBar != null ? voiceLevelBar.rectTransform : null;
+    public RectTransform ApiKeyInputRect => apiKeyInput != null ? apiKeyInput.GetComponent<RectTransform>() : null;
+    public RectTransform SaveButtonRect => saveButton != null ? saveButton.GetComponent<RectTransform>() : null;
 }

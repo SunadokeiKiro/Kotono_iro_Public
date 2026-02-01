@@ -24,13 +24,59 @@ public class ScheduleSettingsUIManager : MonoBehaviour
             scheduleManager = FindFirstObjectByType<ScheduleManager>();
         }
 
+        // ★ プラン制限チェック - UIを先に初期化してから制限を適用
         InitializeDropdowns();
-
-        addButton.onClick.AddListener(OnAddClicked);
-        UIStyler.ApplyStyleToButton(addButton, isIconOnly: false);
-        // Dropdown styling support (optional) - assuming standard TMP Dropdowns
         
-        RefreshList();
+        if (addButton != null)
+        {
+            addButton.onClick.AddListener(OnAddClicked);
+            UIStyler.ApplyStyleToButton(addButton, isIconOnly: false);
+        }
+
+        // プランに応じてUIを制限
+        if (!CheckPlanAccess())
+        {
+            ShowPlanRestrictionUI();
+        }
+        else
+        {
+            RefreshList();
+        }
+    }
+
+    /// <summary>
+    /// スケジュール機能へのアクセス権限をチェック
+    /// </summary>
+    private bool CheckPlanAccess()
+    {
+        if (SubscriptionManager.Instance == null) return false;
+        return SubscriptionManager.Instance.CanUseSchedule;
+    }
+
+    /// <summary>
+    /// プラン制限時のUI表示
+    /// </summary>
+    private void ShowPlanRestrictionUI()
+    {
+        // 入力UIを無効化
+        if (hourDropdown != null) hourDropdown.interactable = false;
+        if (minuteDropdown != null) minuteDropdown.interactable = false;
+        if (durationDropdown != null) durationDropdown.interactable = false;
+        if (addButton != null) addButton.interactable = false;
+        
+        // 制限メッセージを表示
+        string currentPlan = SubscriptionManager.Instance?.CurrentPlan.ToString() ?? "Free";
+        SetStatus($"⚠️ スケジュール機能は Premium / Ultimate プランで利用可能です。\n\n" +
+                  $"現在のプラン: {currentPlan}\n" +
+                  $"プランをアップグレードすると使用できます。");
+        
+        // 既存のスケジュールがある場合でも、実行はされないことを明示
+        if (scheduleManager != null && scheduleManager.GetSchedules().Count > 0)
+        {
+            SetStatus($"⚠️ スケジュール機能は Premium / Ultimate プランで利用可能です。\n\n" +
+                      $"現在のプラン: {currentPlan}\n" +
+                      $"※ 登録済みスケジュールは現在のプランでは実行されません。");
+        }
     }
 
     private void InitializeDropdowns()
