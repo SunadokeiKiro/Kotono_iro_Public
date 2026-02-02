@@ -38,6 +38,9 @@ public class SettingsManager : MonoBehaviour
     [SerializeField] private TextMeshProUGUI statusText;  // ★ Changed to TMP
     [SerializeField] private TextMeshProUGUI currentPlanText; // ★ Changed to TMP
 
+    [Header("ビジュアル設定")]
+    [SerializeField] private TMP_Dropdown postProcessingQualityDropdown;
+
     private string micSettingsFilePath;
 
     private AudioClip microphoneClip;
@@ -120,6 +123,9 @@ public class SettingsManager : MonoBehaviour
 
         ApplyStyles();
         
+        // ★ Post-Processing品質設定の初期化
+        InitializePostProcessingDropdown();
+        
         // ★ Start Settings Tutorial Logic Removed (Manual Trigger Only)
         // if (TutorialManager.Instance != null ...)
     }
@@ -144,6 +150,12 @@ public class SettingsManager : MonoBehaviour
         UIStyler.ApplyStyleToTMP(statusText, isHeader: true);
         UIStyler.ApplyStyleToTMP(currentPlanText, isHeader: true);
         UIStyler.ApplyStyleToText(currentLevelText);
+        
+        // ★ Post-Processing Dropdown
+        if (postProcessingQualityDropdown != null)
+        {
+            UIStyler.ApplyStyleToDropdown(postProcessingQualityDropdown);
+        }
     }
 
     /// <summary>
@@ -211,6 +223,48 @@ public class SettingsManager : MonoBehaviour
             silenceTimeSlider.wholeNumbers = false;
         }
     }
+
+    /// <summary>
+    /// Post-Processing品質設定ドロップダウンを初期化します。
+    /// </summary>
+    private void InitializePostProcessingDropdown()
+    {
+        if (postProcessingQualityDropdown == null) return;
+
+        postProcessingQualityDropdown.ClearOptions();
+        postProcessingQualityDropdown.AddOptions(new List<string> { "オフ", "低", "中", "高" });
+        
+        // 現在の設定を読み込み
+        int currentQuality = PlayerPrefs.GetInt("PostProcessingQuality", 2); // Default: Medium
+        postProcessingQualityDropdown.value = currentQuality;
+        postProcessingQualityDropdown.RefreshShownValue();
+        
+        postProcessingQualityDropdown.onValueChanged.AddListener(OnPostProcessingQualityChanged);
+    }
+
+    /// <summary>
+    /// Post-Processing品質が変更されたときのハンドラ。
+    /// </summary>
+    private void OnPostProcessingQualityChanged(int value)
+    {
+        PlayerPrefs.SetInt("PostProcessingQuality", value);
+        PlayerPrefs.Save();
+        
+        // 現在のシーンにPostProcessingControllerがあれば即時反映
+        var ppController = FindFirstObjectByType<PostProcessingController>();
+        if (ppController != null)
+        {
+            ppController.SetQuality(value);
+        }
+        
+        if (statusText != null)
+        {
+            string qualityName = value switch { 0 => "オフ", 1 => "低", 2 => "中", 3 => "高", _ => "不明" };
+            statusText.text = $"ビジュアル品質: {qualityName}";
+            statusText.color = Color.cyan;
+        }
+    }
+
 
     /// <summary>
     /// 利用可能なマイクデバイスをドロップダウンに設定します。

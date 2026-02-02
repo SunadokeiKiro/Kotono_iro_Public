@@ -16,7 +16,10 @@ public class GameController : MonoBehaviour
     [SerializeField] private MainUIManager mainUIManager;
     [SerializeField] private VFXRippleManager vfxRippleManager; 
     [SerializeField] private SimpleCameraController cameraController; 
-    [SerializeField] private BackgroundGraphController graphController; // Added for Streak Feature 
+    [SerializeField] private BackgroundGraphController graphController; // Optional: Streak Feature Heatmap
+    [SerializeField] private PostProcessingController postProcessingController; // Art Enhancement
+    [SerializeField] private CosmicBackgroundController cosmicBackgroundController; // Cosmic Background (replaces heatmap)
+
 
     private ArtData currentArtData = new ArtData();
     // private string currentArtDataPath; // Removed local path
@@ -348,6 +351,13 @@ public class GameController : MonoBehaviour
                             mainUIManager.ShowRippleInfo(data);
                             mainUIManager.SetFocusMode(true); // UIを隠す
                         }
+                        
+                        // Post-Processing: フォーカスモードのビネット強調
+                        if (postProcessingController != null)
+                        {
+                            postProcessingController.SetFocusMode(true);
+                            postProcessingController.UpdateEffectsFromEmotion(data.valence, data.arousal);
+                        }
                     }
                 }
                 else
@@ -372,6 +382,13 @@ public class GameController : MonoBehaviour
         {
             mainUIManager.HideRippleInfo();
             mainUIManager.SetFocusMode(false); // UIを表示に戻す
+        }
+        
+        // Post-Processing: フォーカス解除
+        if (postProcessingController != null)
+        {
+            postProcessingController.SetFocusMode(false);
+            postProcessingController.ResetToIdle();
         }
     }
 
@@ -475,6 +492,8 @@ public class GameController : MonoBehaviour
         if (currentArtData.emotionHistory != null)
         {
             bool dataModified = false;
+            float sumValence = 0f, sumArousal = 0f;
+            
             for (int i = 0; i < currentArtData.emotionHistory.Count; i++)
             {
                 var emotion = currentArtData.emotionHistory[i];
@@ -485,12 +504,34 @@ public class GameController : MonoBehaviour
                     dataModified = true;
                 }
                 vfxRippleManager.AddNewRipple(emotion.valence, emotion.arousal, emotion.thought, emotion.confidence, emotion.timestamp, emotion.position);
+                
+                sumValence += emotion.valence;
+                sumArousal += emotion.arousal;
             }
             
             if (dataModified && FirestoreManager.Instance != null)
             {
                 // 位置修正などあれば保存し直す
                 FirestoreManager.Instance.SaveArtData(currentMonthKey, currentArtData);
+            }
+            
+            // Post-Processing: 月間平均感情に基づいてエフェクトを調整
+            if (postProcessingController != null && currentArtData.emotionHistory.Count > 0)
+            {
+                float avgValence = sumValence / currentArtData.emotionHistory.Count;
+                float avgArousal = sumArousal / currentArtData.emotionHistory.Count;
+                postProcessingController.UpdateEffectsFromEmotion(avgValence, avgArousal);
+            }
+            else if (postProcessingController != null)
+            {
+                // データがない場合はアイドル状態に
+                postProcessingController.ResetToIdle();
+            }
+            
+            // Cosmic Background: 感情データを渡す
+            if (cosmicBackgroundController != null)
+            {
+                cosmicBackgroundController.SetAverageEmotion(currentArtData.emotionHistory);
             }
         }
     }

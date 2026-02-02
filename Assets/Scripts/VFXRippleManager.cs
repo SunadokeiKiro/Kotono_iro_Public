@@ -13,6 +13,22 @@ public class VFXRippleManager : MonoBehaviour
     [SerializeField] private float particleSize = 0.05f;
     [SerializeField] private float sensitivity = 10.0f; // 感度調整用
 
+    [Header("Idle Animation Settings")]
+    [SerializeField] private float breathSpeed = 0.3f; // 呼吸エフェクトの速度
+    [SerializeField] private float breathAmount = 0.15f; // 呼吸の振幅
+    [SerializeField] private float auroraPulseSpeed = 0.2f; // オーロラパルスの速度
+    [SerializeField] private float organicVariation = 0.5f; // 有機的なユラギの強度
+    [SerializeField] private float auroraBlendStrength = 0.5f; // オーロラのブレンド強度
+    [SerializeField] private float baseGlowIntensity = 0.3f; // ベースグローの強度
+    [SerializeField] private Color idleBaseColor = new Color(0.3f, 0.5f, 0.7f); // アイドル時の基本色
+
+    [Header("Drift Animation Settings (うにうに動き)")]
+    [SerializeField] private float driftSpeed = 0.5f; // 漂いの速度
+    [SerializeField] private float driftAmount = 0.3f; // 漂いの振れ幅
+    
+    [Header("Background Connection")]
+    [SerializeField] private DeepSeaBackgroundController deepSeaBackground;
+
     // 内部データ
     private ParticleSystem.Particle[] particles;
     private Vector3[] basePositions; // 各パーティクルの「基準位置」 (球体表面)
@@ -78,25 +94,36 @@ public class VFXRippleManager : MonoBehaviour
         // 計算には displayRipples (最大10個) を使用
         int count = displayRipples.Count;
         float currentTime = Time.time;
+        
+        // ★ アイドル状態の判定
+        bool isIdle = (count == 0);
 
         // ... Debug Log (略) ...
 
  
 
         float time = Time.time;
-        float driftSpeed = 0.5f;
-        float driftAmount = 0.3f; 
 
         for (int i = 0; i < particleCount; i++)
         {
             Vector3 basePos = basePositions[i];
             
-            // 1. アイドル状態の「漂い」計算 (三角関数でゆらぎを作る)
-            // 座標ごとに位相をずらしてランダムな動きに見せる
-            float dx = Mathf.Sin(time * driftSpeed + basePos.y * 2.0f);
-            float dy = Mathf.Cos(time * driftSpeed + basePos.z * 2.0f);
-            float dz = Mathf.Sin(time * driftSpeed + basePos.x * 2.0f);
-            Vector3 driftOffset = new Vector3(dx, dy, dz) * driftAmount;
+            // 1. 有機的な「漂い」計算 (複数の三角関数を組み合わせ)
+            // パーティクルごとに異なる位相で自然な動きを作る
+            float phaseOffset = basePos.x * 0.5f + basePos.y * 0.3f + basePos.z * 0.2f;
+            
+            // メインの波（ゆっくり）
+            float dx1 = Mathf.Sin(time * driftSpeed + basePos.y * 1.0f + phaseOffset);
+            float dy1 = Mathf.Cos(time * driftSpeed + basePos.z * 1.0f + phaseOffset * 0.8f);
+            float dz1 = Mathf.Sin(time * driftSpeed * 0.9f + basePos.x * 1.0f + phaseOffset * 1.2f);
+            
+            // サブの波（少し速いが弱い）
+            float dx2 = Mathf.Sin(time * driftSpeed * 2f + basePos.z * 1.5f) * 0.2f;
+            float dy2 = Mathf.Cos(time * driftSpeed * 1.6f + basePos.x * 1.5f) * 0.2f;
+            float dz2 = Mathf.Sin(time * driftSpeed * 2.2f + basePos.y * 1.5f) * 0.2f;
+            
+            // 合成（メイン + サブ）
+            Vector3 driftOffset = new Vector3(dx1 + dx2, dy1 + dy2, dz1 + dz2) * driftAmount;
 
             // 常に漂い位置を使用
             Vector3 currentPos = (basePos + driftOffset).normalized * sphereRadius;
@@ -181,13 +208,64 @@ public class VFXRippleManager : MonoBehaviour
                     float heightContribution = h * heightScale;
                     totalHeight += heightContribution;
 
-                    // 色の決定 (3色グラデーション: 不快(青) -> 中立(白) -> 快(オレンジ))
-                    Color waveColor = GetColorFromValence(ripple.valence); // ripple.valenceは -1~1 (amplifiedを使用しないのが自然)
+                    // 色の決定 (5色グラデーション: パープル→ティール→エメラルド→ゴールド→コーラル)
+                    Color waveColor = GetColorFromValence(ripple.valence);
+                    // Arousalに基づいて明度・彩度を調整
+                    waveColor = AdjustColorByArousal(waveColor, ripple.arousal);
                     
                     // 色の合成強度を上げる (波が小さくても色が乗りやすくする)
                     float blendFactor = Mathf.Clamp01(heightContribution * 1.5f);
                     finalColor = Color.Lerp(finalColor, waveColor, blendFactor);
                 }
+            }
+
+            // ★ 有機的な呼吸エフェクト（波紋の有無に関わらず常に適用）
+            // パーティクルごとに異なる位相（よりランダムに）
+            float particlePhase = basePos.x * 0.7f + basePos.y * 0.5f + basePos.z * 0.3f;
+            float particlePhase2 = basePos.z * 0.6f - basePos.x * 0.4f + basePos.y * 0.2f;
+            
+            // メインの呼吸（非常にゆっくり）
+            float mainBreath = Mathf.Sin(time * breathSpeed * Mathf.PI * 2f + particlePhase);
+            // サブの呼吸（異なる周期、異なる位相）
+            float subBreath = Mathf.Sin(time * breathSpeed * 0.6f * Mathf.PI * 2f + particlePhase2 * 1.5f) * 0.4f;
+            // 第三の波（さらに遅く、別のリズム）
+            float tertiaryBreath = Mathf.Sin(time * breathSpeed * 0.4f * Mathf.PI * 2f + particlePhase * 0.7f) * 0.25f;
+            // 微細なユラギ（速いが弱い、ランダム感）
+            float microVariation = Mathf.Sin(time * 0.3f + particlePhase2 * 2.5f) * 0.15f * organicVariation;
+            float microVariation2 = Mathf.Cos(time * 0.2f + particlePhase * 1.8f) * 0.1f * organicVariation;
+            
+            float combinedBreath = (mainBreath + subBreath + tertiaryBreath + microVariation + microVariation2) / 1.9f;
+            float breathScale = 1.0f + (combinedBreath * breathAmount);
+            
+            // 呼吸に応じてわずかに位置を変える（常に適用）
+            currentPos = currentPos.normalized * (sphereRadius * breathScale);
+
+            // ★ オーロラ色効果（常に適用、波紋があっても継続）
+            // オーロラパルス: 球体表面を流れる色の波（非常にゆっくり）
+            float auroraPhase = (basePos.y + basePos.x * 0.3f) * 0.3f + time * auroraPulseSpeed;
+            float auroraWave = (Mathf.Sin(auroraPhase * Mathf.PI * 2f) + 1f) * 0.5f;
+            // 第二の波（別方向）
+            float auroraPhase2 = (basePos.z - basePos.x * 0.2f) * 0.25f + time * auroraPulseSpeed * 0.7f;
+            float auroraWave2 = (Mathf.Sin(auroraPhase2 * Mathf.PI * 2f) + 1f) * 0.5f;
+            // 第三の波（さらに遅い）
+            float auroraPhase3 = (basePos.x + basePos.z * 0.4f) * 0.2f + time * auroraPulseSpeed * 0.5f;
+            float auroraWave3 = (Mathf.Sin(auroraPhase3 * Mathf.PI * 2f) + 1f) * 0.5f;
+            float combinedAurora = (auroraWave + auroraWave2 * 0.6f + auroraWave3 * 0.4f) / 2.0f;
+            
+            // オーロラ色: 淡い青から淡い緑にグラデーション
+            Color auroraColor1 = new Color(0.35f, 0.55f, 0.85f, 1f); // 淡い青
+            Color auroraColor2 = new Color(0.45f, 0.85f, 0.65f, 1f); // 淡い緑
+            Color auroraColor = Color.Lerp(auroraColor1, auroraColor2, combinedAurora);
+            
+            if (isIdle)
+            {
+                // アイドル時: 白ベースにオーロラ色を50%適用
+                finalColor = Color.Lerp(Color.white, auroraColor, auroraBlendStrength);
+            }
+            else
+            {
+                // 波紋がある時: 波紋の色にオーロラを50%ブレンド
+                finalColor = Color.Lerp(finalColor, auroraColor, auroraBlendStrength);
             }
 
             // ... (3. 最終位置決定) ...
@@ -234,6 +312,12 @@ public class VFXRippleManager : MonoBehaviour
 
         // 追加のたびに表示用波紋を再計算
         RecalculateDisplayRipples();
+        
+        // 深海背景にも感情データを送信
+        if (deepSeaBackground != null)
+        {
+            deepSeaBackground.SetAnalysisResult(valence, arousal);
+        }
     }
 
     // 10個のバケットに圧縮するアルゴリズム
@@ -320,29 +404,63 @@ public class VFXRippleManager : MonoBehaviour
 
     /// <summary>
     /// Valence (快/不快) に基づいて色を決定します。
-    /// -1.0(不快): 青
-    ///  0.0(中立): 白 (少し青みがかった白)
-    /// +1.0(快): オレンジ
+    /// 5色グラデーション:
+    /// -1.0: 深いパープル/インディゴ
+    /// -0.5: ティール/シアン
+    ///  0.0: エメラルドグリーン
+    /// +0.5: ゴールド/アンバー
+    /// +1.0: コーラルピンク/サンセットオレンジ
     /// </summary>
     private Color GetColorFromValence(float valence)
     {
-        // カラーパレット定義
-        Color colorNegative = new Color(0.1f, 0.2f, 0.9f); // 深い青
-        Color colorNeutral  = new Color(0.2f, 0.8f, 0.2f); // 緑 (ユーザー要望により変更)
-        Color colorPositive = new Color(1.0f, 0.5f, 0.1f); // 鮮やかなオレンジ
+        // 5色カラーパレット定義 (50%オーロラブレンドでも目立つよう彩度を上げた)
+        Color colorVeryNegative = new Color(0.4f, 0.0f, 0.7f);    // より鮮やかなパープル
+        Color colorNegative     = new Color(0.0f, 0.7f, 0.7f);    // より鮮やかなティール/シアン
+        Color colorNeutral      = new Color(0.2f, 0.9f, 0.4f);    // より鮮やかなエメラルドグリーン
+        Color colorPositive     = new Color(1.0f, 0.8f, 0.0f);    // ゴールド/アンバー
+        Color colorVeryPositive = new Color(1.0f, 0.4f, 0.3f);    // より鮮やかなコーラル/オレンジ
 
-        if (valence < 0)
+        // 5区間に分割してLerp
+        if (valence < -0.5f)
         {
-            // 不快(-1) ～ 中立(0)
-            float t = valence + 1.0f; // 0.0 ~ 1.0 に正規化
+            // -1.0 ~ -0.5
+            float t = (valence + 1.0f) * 2.0f; // 0.0 ~ 1.0
+            return Color.Lerp(colorVeryNegative, colorNegative, t);
+        }
+        else if (valence < 0.0f)
+        {
+            // -0.5 ~ 0.0
+            float t = (valence + 0.5f) * 2.0f; // 0.0 ~ 1.0
             return Color.Lerp(colorNegative, colorNeutral, t);
+        }
+        else if (valence < 0.5f)
+        {
+            // 0.0 ~ 0.5
+            float t = valence * 2.0f; // 0.0 ~ 1.0
+            return Color.Lerp(colorNeutral, colorPositive, t);
         }
         else
         {
-            // 中立(0) ～ 快(+1)
-            float t = valence; // 0.0 ~ 1.0
-            return Color.Lerp(colorNeutral, colorPositive, t);
+            // 0.5 ~ 1.0
+            float t = (valence - 0.5f) * 2.0f; // 0.0 ~ 1.0
+            return Color.Lerp(colorPositive, colorVeryPositive, t);
         }
+    }
+
+    /// <summary>
+    /// Arousalに基づいて色の明度と彩度を調整します。
+    /// 高Arousalで明るく、低Arousalでソフトな色合いになります。
+    /// </summary>
+    private Color AdjustColorByArousal(Color baseColor, float arousal)
+    {
+        // HSVに変換して調整
+        Color.RGBToHSV(baseColor, out float h, out float s, out float v);
+        
+        // Arousalが高いほど彩度と明度をアップ
+        s = Mathf.Lerp(s * 0.6f, Mathf.Min(s * 1.2f, 1.0f), arousal);
+        v = Mathf.Lerp(v * 0.7f, Mathf.Min(v * 1.3f, 1.0f), arousal);
+        
+        return Color.HSVToRGB(h, s, v);
     }
 
     // ... (Existing code) ...

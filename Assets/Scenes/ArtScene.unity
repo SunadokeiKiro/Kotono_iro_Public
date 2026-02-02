@@ -3547,6 +3547,66 @@ MonoBehaviour:
   m_hasFontAssetChanged: 0
   m_baseMaterial: {fileID: 0}
   m_maskOffset: {x: 0, y: 0, z: 0, w: 0}
+--- !u!1 &280147710
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 280147712}
+  - component: {fileID: 280147711}
+  m_Layer: 0
+  m_Name: PostProcessingController
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &280147711
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 280147710}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 25c03e9ef7245914a9a69cf332e0b62b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PostProcessingController
+  globalVolume: {fileID: 0}
+  rippleManager: {fileID: 1405670886}
+  baseBloomIntensity: 0.5
+  maxBloomIntensity: 3
+  bloomThreshold: 0.9
+  baseVignetteIntensity: 0.2
+  focusVignetteIntensity: 0.4
+  baseChromaticIntensity: 0
+  maxChromaticIntensity: 0.3
+  baseSaturation: 0
+  maxSaturation: 30
+  baseContrast: 0
+  maxContrast: 20
+  transitionSpeed: 2
+  pulseSpeed: 0.1
+  pulseBloomRange: 0.1
+--- !u!4 &280147712
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 280147710}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &292598505
 GameObject:
   m_ObjectHideFlags: 0
@@ -3920,6 +3980,72 @@ MonoBehaviour:
   m_ChildScaleWidth: 1
   m_ChildScaleHeight: 1
   m_ReverseArrangement: 0
+--- !u!1 &320886306
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 320886307}
+  - component: {fileID: 320886308}
+  m_Layer: 0
+  m_Name: CosmicBackground
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 0
+--- !u!4 &320886307
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 320886306}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 963194228}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &320886308
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 320886306}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bf4b4df4eeed27847a83732549b01a18, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CosmicBackgroundController
+  targetCamera: {fileID: 963194227}
+  fovPadding: 1.2
+  autoReinitializeOnAspectChange: 1
+  starCount: 1000
+  starDistanceMin: 50
+  starDistanceMax: 100
+  starSizeMin: 0.05
+  starSizeMax: 0.1
+  starTwinkleSpeed: 2
+  brightStarCount: 300
+  brightStarSizeMin: 0.1
+  brightStarSizeMax: 0.3
+  enableNebula: 1
+  nebulaParticleCount: 10
+  nebulaDistanceMin: 100
+  nebulaDistanceMax: 150
+  nebulaAlpha: 0.7
+  nebulaParticleSizeMin: 20
+  nebulaParticleSizeMax: 50
+  auroraSpeed: 0.1
+  auroraIntensity: 0.5
+  reactToEmotion: 1
 --- !u!1 &326952904
 GameObject:
   m_ObjectHideFlags: 0
@@ -10399,6 +10525,67 @@ MonoBehaviour:
   m_ChildScaleWidth: 1
   m_ChildScaleHeight: 1
   m_ReverseArrangement: 0
+--- !u!1 &839786987
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 839786989}
+  - component: {fileID: 839786988}
+  m_Layer: 0
+  m_Name: DeepSeaBackground
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &839786988
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 839786987}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ca1df7cdd9b0ca745939a9f2df7abbfa, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DeepSeaBackgroundController
+  targetCamera: {fileID: 963194227}
+  attachToCamera: 1
+  distanceRatio: 0.95
+  sizePadding: 1.1
+  topLightColor: {r: 0.2, g: 0.4, b: 0.6, a: 1}
+  bottomLightColor: {r: 0.1, g: 0.3, b: 0.5, a: 1}
+  deepSeaColor: {r: 0, g: 0, b: 0, a: 1}
+  lightIntensity: 1.1
+  lightFalloff: 3
+  centerDarkness: 1
+  centerRadius: 0.25
+  noiseScale: 2
+  noiseSpeed: 0.25
+  noiseIntensity: 0.65
+  colorVariationRange: 0.1
+  maxHueShift: 0.15
+  backgroundMaterial: {fileID: 0}
+--- !u!4 &839786989
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 839786987}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 963194228}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &843778127
 GameObject:
   m_ObjectHideFlags: 0
@@ -12096,7 +12283,9 @@ Transform:
   m_LocalPosition: {x: 0, y: 0, z: -25.660013}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children: []
+  m_Children:
+  - {fileID: 320886307}
+  - {fileID: 839786989}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &963194229
@@ -12122,7 +12311,7 @@ MonoBehaviour:
     m_Bits: 1
   m_VolumeTrigger: {fileID: 0}
   m_VolumeFrameworkUpdateModeOption: 2
-  m_RenderPostProcessing: 0
+  m_RenderPostProcessing: 1
   m_Antialiasing: 0
   m_AntialiasingQuality: 2
   m_StopNaN: 0
@@ -13117,7 +13306,9 @@ MonoBehaviour:
   mainUIManager: {fileID: 1868798843}
   vfxRippleManager: {fileID: 1405670886}
   cameraController: {fileID: 963194233}
-  graphController: {fileID: 0}
+  graphController: {fileID: 1139936695}
+  postProcessingController: {fileID: 280147711}
+  cosmicBackgroundController: {fileID: 0}
   rippleClickThreshold: 2.5
 --- !u!1 &1040489058
 GameObject:
@@ -15005,7 +15196,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &1213095120
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -17215,6 +17406,16 @@ MonoBehaviour:
   sphereRadius: 5
   particleSize: 0.05
   sensitivity: 10
+  breathSpeed: 0.08
+  breathAmount: 0.08
+  auroraPulseSpeed: 0.2
+  organicVariation: 0.5
+  auroraBlendStrength: 0.5
+  baseGlowIntensity: 0.3
+  idleBaseColor: {r: 0.3, g: 0.5, b: 0.7, a: 1}
+  driftSpeed: 0.2
+  driftAmount: 0.4
+  deepSeaBackground: {fileID: 839786988}
 --- !u!199 &1405670887
 ParticleSystemRenderer:
   serializedVersion: 6
@@ -24235,7 +24436,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: abe75c7568fde6b4d9881f4c47b3fae4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::StreakManager
-  graphController: {fileID: 0}
+  graphController: {fileID: 1139936695}
 --- !u!4 &1577949122
 Transform:
   m_ObjectHideFlags: 0
@@ -31058,3 +31259,4 @@ SceneRoots:
   - {fileID: 648957077}
   - {fileID: 1250896124}
   - {fileID: 1577949122}
+  - {fileID: 280147712}
