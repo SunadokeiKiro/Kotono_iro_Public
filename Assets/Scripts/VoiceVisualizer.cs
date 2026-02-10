@@ -38,26 +38,24 @@ public class VoiceVisualizer : MonoBehaviour
     
     void Update()
     {
-        // デバッグ: 参照チェック (1秒ごと、録音中のみ)
-        debugLogTimer += Time.deltaTime;
-        if (debugLogTimer >= 1f)
+        // ★修正: 参照がnullなら再検索（シーン遷移後の対応）
+        if (microphoneController == null)
         {
-            debugLogTimer = 0f;
+            microphoneController = FindFirstObjectByType<MicrophoneController>();
             if (microphoneController == null)
             {
-                Debug.LogWarning("[VoiceVisualizer] microphoneController is NULL!");
-            }
-            else if (voiceParticles == null)
-            {
-                Debug.LogWarning("[VoiceVisualizer] voiceParticles is NULL (should auto-generate)!");
-            }
-            else if (microphoneController.IsRecording) // ★ 録音中のみログを出力
-            {
-                Debug.Log($"[VoiceVisualizer] RMS={microphoneController.CurrentRmsValue:F4}, Emission={currentEmission:F1}");
+                // 毎フレームWarning出すのは重いので、デバッグタイマーで制御
+                return;
             }
         }
         
-        if (microphoneController == null || voiceParticles == null) return;
+        // パーティクルが未設定なら自動生成
+        if (voiceParticles == null)
+        {
+            SetupParticleSystem();
+        }
+        
+        if (voiceParticles == null) return;
 
         // 音量取得 (プロパティ追加済み前提)
         float volume = microphoneController.CurrentRmsValue;

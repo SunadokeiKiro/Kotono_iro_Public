@@ -18,6 +18,7 @@ public class TutorialOverlayController : MonoBehaviour
 
     private System.Action onNextCallback;
     private System.Action onSkipCallback;
+    private RectTransform textBackgroundRect; // テキスト背景用
 
     private void Awake()
     {
@@ -27,15 +28,47 @@ public class TutorialOverlayController : MonoBehaviour
         if (nextButton != null) nextButton.onClick.AddListener(OnNextClicked);
         if (skipButton != null) skipButton.onClick.AddListener(OnSkipClicked);
 
-        // 初期状態は非表示
-        Hide();
+        // 初期状態: GOは有効なまま、CanvasGroupで非表示にする
+        // ※ gameObject.SetActive(false) は使わない（Instantiate直後のShowStep呼び出しが失敗するため）
+        if (canvasGroup != null)
+        {
+            canvasGroup.alpha = 0f;
+            canvasGroup.blocksRaycasts = false;
+            canvasGroup.interactable = false;
+        }
         
-        // ハイライト枠がなければ作成する（簡易的な黄色い枠）
+        // ハイライト枠がなければ警告
         if (highlightFrame == null)
         {
-            // CreateDefaultHighlightFrame(); // 実装簡略化のため、Inspectorでの設定を推奨
-            Debug.LogWarning("TutorialOverlayController: Highlight Frame is missing.");
+            Debug.LogWarning("TutorialOverlayController: Highlight Frame is missing. ハイライト枠がInspectorで未設定です。");
         }
+        else
+        {
+            highlightFrame.gameObject.SetActive(false);
+        }
+
+        // テキスト背景を動的生成
+        CreateTextBackground();
+    }
+
+    /// <summary>
+    /// instructionTextの背後に黒背景パネルを生成
+    /// </summary>
+    private void CreateTextBackground()
+    {
+        if (instructionText == null) return;
+
+        GameObject bgObj = new GameObject("TextBackground", typeof(RectTransform), typeof(Image));
+        bgObj.transform.SetParent(instructionText.transform.parent, false);
+
+        // テキストの直前に配置（背面に描画される）
+        int textIndex = instructionText.transform.GetSiblingIndex();
+        bgObj.transform.SetSiblingIndex(textIndex);
+
+        textBackgroundRect = bgObj.GetComponent<RectTransform>();
+        Image bgImage = bgObj.GetComponent<Image>();
+        bgImage.color = new Color(0f, 0f, 0f, 1f); // 黒α255
+        bgImage.raycastTarget = false;
     }
 
     /// <summary>
@@ -45,60 +78,187 @@ public class TutorialOverlayController : MonoBehaviour
     /// <param name="text">説明文</param>
     /// <param name="onNext">「次へ」ボタンが押された時のコールバック</param>
     /// <param name="onSkip">「スキップ」ボタンが押された時のコールバック</param>
-    public void ShowStep(RectTransform target, string text, System.Action onNext, System.Action onSkip)
+    /// <param name="fullWidth">trueの場合、ターゲットのY座標で画面幅いっぱいに横一列ハイライト</param>
+    public void ShowStep(RectTransform target, string text, System.Action onNext, System.Action onSkip, bool fullWidth = false)
     {
         gameObject.SetActive(true);
-        canvasGroup.alpha = 1f;
-        canvasGroup.blocksRaycasts = true;
+        if (canvasGroup != null)
+        {
+            canvasGroup.alpha = 1f;
+            canvasGroup.blocksRaycasts = true;
+            canvasGroup.interactable = true;
+        }
 
-        instructionText.text = text;
+        if (instructionText != null) instructionText.text = text;
         onNextCallback = onNext;
         onSkipCallback = onSkip;
 
-        if (target != null)
+        if (target != null && highlightFrame != null)
         {
-            // ターゲットの位置とサイズに合わせてハイライト枠を移動・リサイズ
-            Canvas rootCanvas = GetComponentInParent<Canvas>();
-            Camera cam = null;
-            if (rootCanvas != null && rootCanvas.renderMode != RenderMode.ScreenSpaceOverlay)
+            // ターゲットのワールド座標をオーバーレイのローカル座標に変換
+            Vector3 localPos = overlayCanvasRect.InverseTransformPoint(target.position);
+            
+            // サイズ計算（ターゲットのワールドスケールを考慮）
+            float scaleRatioX = (overlayCanvasRect.lossyScale.x > 0) ? target.lossyScale.x / overlayCanvasRect.lossyScale.x : 1f;
+            float scaleRatioY = (overlayCanvasRect.lossyScale.y > 0) ? target.lossyScale.y / overlayCanvasRect.lossyScale.y : 1f;
+            float h = target.rect.height * scaleRatioY + 20;
+
+            if (fullWidth)
             {
-                cam = rootCanvas.worldCamera;
+                // 横一列モード: Y座標はターゲットに合わせ、X座標は中央、幅は画面いっぱい
+                highlightFrame.anchoredPosition = new Vector2(0, localPos.y);
+                highlightFrame.sizeDelta = new Vector2(overlayCanvasRect.rect.width, h);
             }
-
-            Vector3 worldPos = target.position;
-            Vector2 localPos;
-            
-            // ターゲットのスクリーン座標を取得
-            Vector2 screenPoint = RectTransformUtility.WorldToScreenPoint(cam, worldPos);
-
-            // スクリーン座標をオーバーレイ内のローカル座標に変換
-            RectTransformUtility.ScreenPointToLocalPointInRectangle(
-                overlayCanvasRect, 
-                screenPoint, 
-                cam, 
-                out localPos
-            );
-
-            highlightFrame.anchoredPosition = localPos;
-            
-            // サイズ調整（ターゲットのサイズ + 余白）
-            // ターゲットのサイズもスケールを考慮して取得する必要がある場合があるが、通常はrect.width/heightで十分
-            highlightFrame.sizeDelta = new Vector2(target.rect.width + 20, target.rect.height + 20); 
+            else
+            {
+                // 通常モード: ターゲットの位置とサイズに合わせる
+                highlightFrame.anchoredPosition = new Vector2(localPos.x, localPos.y);
+                float w = target.rect.width * scaleRatioX + 20;
+                highlightFrame.sizeDelta = new Vector2(w, h);
+            }
             
             highlightFrame.gameObject.SetActive(true);
+
+            // テキスト・ボタン位置調整: ハイライトと重ならないように配置
+            AdjustUIPosition(localPos.y, h);
         }
-        else
+        else if (highlightFrame != null)
         {
             // ターゲットがない場合（Welcomeメッセージなど）は枠を隠す
             highlightFrame.gameObject.SetActive(false);
+            // テキスト・ボタンを画面中央に配置
+            ResetUIPosition();
         }
+    }
+
+    /// <summary>
+    /// ハイライト位置に応じてテキスト・ボタンを上下に配置（重なり防止＋画面外防止）
+    /// </summary>
+    private void AdjustUIPosition(float highlightY, float highlightHeight)
+    {
+        RectTransform textRect = (instructionText != null) ? instructionText.GetComponent<RectTransform>() : null;
+        RectTransform nextRect = (nextButton != null) ? nextButton.GetComponent<RectTransform>() : null;
+        RectTransform skipRect = (skipButton != null) ? skipButton.GetComponent<RectTransform>() : null;
+
+        float margin = 30f;
+        float buttonSpacing = 10f;
+        float canvasHalfH = overlayCanvasRect.rect.height / 2f;
+
+        // テキストの高さ
+        float textH = (textRect != null) ? textRect.rect.height : 60f;
+        // ボタンの高さ
+        float btnH = (nextRect != null) ? nextRect.rect.height : 40f;
+        // テキスト + ボタン全体の高さ
+        float totalContentH = textH + buttonSpacing + btnH;
+
+        // ハイライトの上端・下端（ローカル座標）
+        float hlTop = highlightY + highlightHeight / 2f;
+        float hlBottom = highlightY - highlightHeight / 2f;
+
+        // テキスト群を置くY座標の中心を決定
+        float contentCenterY;
+
+        // 下側に置けるか判定
+        float candidateBottom = hlBottom - margin - totalContentH;
+        // 上側に置けるか判定
+        float candidateTop = hlTop + margin + totalContentH;
+
+        if (highlightY > 0)
+        {
+            // ハイライトが上側 → まず下に置く
+            contentCenterY = hlBottom - margin - totalContentH / 2f;
+            // 下端が画面外なら上に移動
+            if (contentCenterY - totalContentH / 2f < -canvasHalfH + 20f)
+            {
+                contentCenterY = hlTop + margin + totalContentH / 2f;
+            }
+        }
+        else
+        {
+            // ハイライトが下側 → まず上に置く
+            contentCenterY = hlTop + margin + totalContentH / 2f;
+            // 上端が画面外なら下に移動
+            if (contentCenterY + totalContentH / 2f > canvasHalfH - 20f)
+            {
+                contentCenterY = hlBottom - margin - totalContentH / 2f;
+            }
+        }
+
+        // 最終Clamp（画面端に収まるように）
+        float minY = -canvasHalfH + totalContentH / 2f + 20f;
+        float maxY = canvasHalfH - totalContentH / 2f - 20f;
+        contentCenterY = Mathf.Clamp(contentCenterY, minY, maxY);
+
+        // テキストを上、ボタンをその下に配置
+        float textY = contentCenterY + totalContentH / 2f - textH / 2f;
+        float btnY = contentCenterY - totalContentH / 2f + btnH / 2f;
+
+        if (textRect != null)
+            textRect.anchoredPosition = new Vector2(textRect.anchoredPosition.x, textY);
+
+        if (nextRect != null)
+            nextRect.anchoredPosition = new Vector2(nextRect.anchoredPosition.x, btnY);
+
+        if (skipRect != null)
+            skipRect.anchoredPosition = new Vector2(skipRect.anchoredPosition.x, btnY);
+
+        UpdateTextBackground();
+    }
+
+    /// <summary>
+    /// テキスト・ボタン位置をデフォルト（中央付近）にリセット
+    /// </summary>
+    private void ResetUIPosition()
+    {
+        RectTransform textRect = (instructionText != null) ? instructionText.GetComponent<RectTransform>() : null;
+        RectTransform nextRect = (nextButton != null) ? nextButton.GetComponent<RectTransform>() : null;
+        RectTransform skipRect = (skipButton != null) ? skipButton.GetComponent<RectTransform>() : null;
+
+        float textH = (textRect != null) ? textRect.rect.height : 60f;
+        float btnH = (nextRect != null) ? nextRect.rect.height : 40f;
+        float spacing = 15f;
+
+        // テキスト + ボタンをセットで中央に配置
+        float totalH = textH + spacing + btnH;
+        float textY = totalH / 2f - textH / 2f;
+        float btnY = -totalH / 2f + btnH / 2f;
+
+        if (textRect != null)
+            textRect.anchoredPosition = new Vector2(textRect.anchoredPosition.x, textY);
+        if (nextRect != null)
+            nextRect.anchoredPosition = new Vector2(nextRect.anchoredPosition.x, btnY);
+        if (skipRect != null)
+            skipRect.anchoredPosition = new Vector2(skipRect.anchoredPosition.x, btnY);
+
+        UpdateTextBackground();
+    }
+
+    /// <summary>
+    /// テキスト背景パネルをテキストの位置・サイズに同期
+    /// </summary>
+    private void UpdateTextBackground()
+    {
+        if (textBackgroundRect == null || instructionText == null) return;
+        RectTransform textRect = instructionText.GetComponent<RectTransform>();
+        if (textRect == null) return;
+
+        float padding = 20f;
+        textBackgroundRect.anchoredPosition = textRect.anchoredPosition;
+        textBackgroundRect.sizeDelta = new Vector2(
+            textRect.rect.width + padding * 2,
+            textRect.rect.height + padding
+        );
     }
 
     public void Hide()
     {
+        if (canvasGroup != null)
+        {
+            canvasGroup.alpha = 0f;
+            canvasGroup.blocksRaycasts = false;
+            canvasGroup.interactable = false;
+        }
         gameObject.SetActive(false);
-        canvasGroup.alpha = 0f;
-        canvasGroup.blocksRaycasts = false;
     }
 
     private void OnNextClicked()

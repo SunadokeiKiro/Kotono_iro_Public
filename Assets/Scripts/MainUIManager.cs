@@ -57,8 +57,41 @@ public class MainUIManager : MonoBehaviour
 
     private bool isArchiveMode = false;
 
+    void Awake()
+    {
+        Debug.Log($"[MainUIManager] Awake() called. GameObject={gameObject.name}, enabled={enabled}, activeInHierarchy={gameObject.activeInHierarchy}");
+        
+        // ★修正: 重複インスタンスチェック
+        // DontDestroyOnLoadされたマネージャーが古いMainUIManagerへの参照を持つことで
+        // 新しいインスタンスが正しく初期化されない問題を回避
+        var existingInstances = FindObjectsByType<MainUIManager>(FindObjectsSortMode.None);
+        Debug.Log($"[MainUIManager] Found {existingInstances.Length} MainUIManager instances");
+        
+        foreach (var instance in existingInstances)
+        {
+            if (instance != this && instance.gameObject.scene.name != gameObject.scene.name)
+            {
+                // 別シーンからの古いインスタンスがあれば破棄
+                Debug.Log($"[MainUIManager] Destroying old instance from scene: {instance.gameObject.scene.name}");
+                Destroy(instance.gameObject);
+            }
+        }
+    }
+
+    void OnEnable()
+    {
+        Debug.Log($"[MainUIManager] OnEnable() called. enabled={enabled}");
+    }
+
+    void OnDisable()
+    {
+        Debug.Log($"[MainUIManager] OnDisable() called. reason: enabled={enabled}, activeInHierarchy={gameObject.activeInHierarchy}");
+    }
+
     void Start()
     {
+        Debug.Log($"[MainUIManager] Start() called. gameController={(gameController != null ? "OK" : "NULL")}, microphoneController={(microphoneController != null ? "OK" : "NULL")}");
+        
         if (gameController == null || microphoneController == null)
         {
             Debug.LogError("MainUIManager: Controller references are not set in the inspector.");
@@ -122,6 +155,13 @@ public class MainUIManager : MonoBehaviour
         StartCoroutine(ToggleEmotionDisplayCoroutine());
         StartCoroutine(ForceRebuildUI());
         StartCoroutine(CheckApiReadyLoop()); // ★ API Ready Check
+        
+        // ★追加: 再生イベント購読
+        if (audioPlaybackController != null)
+        {
+            audioPlaybackController.OnPlaybackStarted += OnPlaybackStartedHandler;
+            audioPlaybackController.OnPlaybackFinished += OnPlaybackFinishedHandler;
+        }
     }
 
     private IEnumerator CheckApiReadyLoop()
@@ -286,6 +326,10 @@ public class MainUIManager : MonoBehaviour
         // Blocking Close Button
         if (blockingCloseButton)
             blockingCloseButton.onClick.AddListener(HideBlockingMessage);
+        
+        // ★追加: 録音再生ボタン
+        if (playbackButton)
+            playbackButton.onClick.AddListener(OnPlaybackButtonClick);
     }
     
     private void OnToggleDetailsClick()
@@ -626,6 +670,19 @@ public class MainUIManager : MonoBehaviour
     [Header("Ripple Info UI")]
     [SerializeField] private TMPro.TextMeshProUGUI rippleInfoText;
     [SerializeField] private GameObject rippleInfoPanel;
+    [SerializeField] private Button playbackButton; // ★追加: 再生ボタン
+    [SerializeField] private TextMeshProUGUI playbackButtonText; // ★追加: 再生ボタンテキスト
+    [SerializeField] private AudioPlaybackController audioPlaybackController; // ★追加: 再生コントローラー
+    
+    [Header("Recording List UI")]
+    [SerializeField] private GameObject recordingListPanel; // ★追加: 録音リストパネル（ScrollView等）
+    [SerializeField] private Transform recordingListContent; // ★追加: リスト項目の親Transform
+    [SerializeField] private GameObject recordingItemPrefab; // ★追加: リスト項目のプレハブ
+    
+    private string currentFocusedMonthKey; // ★追加: フォーカス中の月キー
+    private string currentFocusedAudioFileName; // ★追加: フォーカス中の音声ファイル名
+    private List<(long timestamp, string audioFileName)> currentRecordingList = new List<(long, string)>(); // ★追加: 録音リスト
+    private int currentSelectedIndex = 0; // ★追加: 選択中のインデックス
 
     public void ShowRippleInfo(RippleData data)
     {
@@ -665,6 +722,284 @@ public class MainUIManager : MonoBehaviour
     public void HideRippleInfo()
     {
         if (rippleInfoPanel != null) rippleInfoPanel.SetActive(false);
+        
+        // ★追加: 録音リストパネルも非表示
+        if (recordingListPanel != null) recordingListPanel.SetActive(false);
+        
+        // ★追加: 再生停止
+        if (audioPlaybackController != null)
+        {
+            audioPlaybackController.StopPlayback();
+        }
+        currentFocusedMonthKey = null;
+        currentFocusedAudioFileName = null;
+        currentRecordingList.Clear();
+    }
+
+    /// <summary>
+    /// フォーカス中の波紋の音声再生可否を設定します。
+    /// </summary>
+    public void SetPlaybackAvailable(string monthKey, string audioFileName, bool canPlay, bool isExpired = false)
+    {
+        Debug.Log($"[MainUIManager] SetPlaybackAvailable called - monthKey: {monthKey}, audioFileName: {audioFileName}, canPlay: {canPlay}, isExpired: {isExpired}");
+        Debug.Log($"[MainUIManager] playbackButton is null: {playbackButton == null}, playbackButtonText is null: {playbackButtonText == null}");
+        
+        currentFocusedMonthKey = monthKey;
+        currentFocusedAudioFileName = audioFileName;
+        
+        if (playbackButton != null)
+        {
+            bool hasAudio = !string.IsNullOrEmpty(audioFileName);
+            Debug.Log($"[MainUIManager] hasAudio: {hasAudio}, setting button active");
+            playbackButton.gameObject.SetActive(hasAudio);
+            
+            if (hasAudio)
+            {
+                if (isExpired)
+                {
+                    // 期限切れ（アップグレード促進）
+                    playbackButton.interactable = false;
+                    if (playbackButtonText != null)
+                    {
+                        playbackButtonText.text = "🔒 アップグレードで再生";
+                    }
+                }
+                else if (canPlay)
+                {
+                    // 再生可能
+                    playbackButton.interactable = true;
+                    UpdatePlaybackButtonState(false);
+                }
+                else
+                {
+                    // ファイルが存在しない
+                    playbackButton.interactable = false;
+                    if (playbackButtonText != null)
+                    {
+                        playbackButtonText.text = "音声なし";
+                    }
+                }
+            }
+        }
+    }
+    
+    /// <summary>
+    /// 複数録音対応: フォーカス中の波紋に関連する録音リストを設定します。
+    /// </summary>
+    public void SetPlaybackList(string monthKey, List<(long timestamp, string audioFileName)> recordings, bool canPlay, bool isExpired)
+    {
+        currentFocusedMonthKey = monthKey;
+        currentRecordingList = recordings ?? new List<(long, string)>();
+        currentSelectedIndex = 0;
+        
+        int count = currentRecordingList.Count;
+        Debug.Log($"[MainUIManager] SetPlaybackList: count={count}, canPlay={canPlay}, isExpired={isExpired}");
+        
+        // 録音なし
+        if (count == 0)
+        {
+            if (recordingListPanel != null) recordingListPanel.SetActive(false);
+            currentFocusedAudioFileName = null;
+            return;
+        }
+        
+        // 1つ以上: 常にリスト表示
+        currentFocusedAudioFileName = currentRecordingList[0].audioFileName;
+        
+        // リストパネルを表示
+        if (recordingListPanel != null)
+        {
+            recordingListPanel.SetActive(true);
+            PopulateRecordingList(canPlay, isExpired);
+        }
+        else
+        {
+            Debug.LogWarning("[MainUIManager] recordingListPanel is null! Please assign it in the Inspector.");
+        }
+    }
+    
+    /// <summary>
+    /// 録音リストUIを生成します。
+    /// </summary>
+    private void PopulateRecordingList(bool canPlay, bool isExpired)
+    {
+        if (recordingListContent == null) return;
+        
+        // 既存のリスト項目をクリア
+        foreach (Transform child in recordingListContent)
+        {
+            Destroy(child.gameObject);
+        }
+        
+        // プレハブがなければテキストベースで簡易生成
+        for (int i = 0; i < currentRecordingList.Count; i++)
+        {
+            var (timestamp, audioFileName) = currentRecordingList[i];
+            int index = i; // クロージャ用
+            
+            GameObject item;
+            if (recordingItemPrefab != null)
+            {
+                item = Instantiate(recordingItemPrefab, recordingListContent);
+            }
+            else
+            {
+                // フォールバック: 簡易ボタン生成
+                item = new GameObject($"RecordingItem_{i}");
+                item.transform.SetParent(recordingListContent, false);
+                var btn = item.AddComponent<Button>();
+                var txt = item.AddComponent<TextMeshProUGUI>();
+                txt.fontSize = 14;
+                txt.alignment = TMPro.TextAlignmentOptions.MidlineLeft;
+            }
+            
+            // テキスト設定（GetTimeLabelを使用）
+            var text = item.GetComponentInChildren<TextMeshProUGUI>();
+            if (text != null)
+            {
+                text.text = GetTimeLabel(i);
+                // 初期色設定（まだ再生していないので全て白）
+                text.color = Color.white;
+            }
+            
+            // ボタンクリック設定
+            var button = item.GetComponent<Button>();
+            if (button != null)
+            {
+                button.interactable = canPlay && !isExpired;
+                button.onClick.AddListener(() => OnRecordingItemSelected(index));
+            }
+        }
+    }
+    
+    /// <summary>
+    /// 録音リストの項目が選択された時のハンドラー。
+    /// </summary>
+    private void OnRecordingItemSelected(int index)
+    {
+        if (index < 0 || index >= currentRecordingList.Count) return;
+        
+        currentSelectedIndex = index;
+        currentFocusedAudioFileName = currentRecordingList[index].audioFileName;
+        
+        // 再生開始
+        if (audioPlaybackController != null)
+        {
+            audioPlaybackController.PlayRecording(currentFocusedMonthKey, currentFocusedAudioFileName);
+            UpdatePlaybackButtonState(true);
+        }
+        
+        // リスト表示更新（選択状態の強調）
+        int i = 0;
+        foreach (Transform child in recordingListContent)
+        {
+            var text = child.GetComponentInChildren<TextMeshProUGUI>();
+            if (text != null)
+            {
+                text.color = (i == currentSelectedIndex) ? Color.cyan : Color.white;
+            }
+            i++;
+        }
+    }
+    
+    /// <summary>
+    /// 再生ボタンの表示状態を更新します。
+    /// </summary>
+    private void UpdatePlaybackButtonState(bool isPlaying)
+    {
+        if (playbackButtonText != null)
+        {
+            playbackButtonText.text = isPlaying ? "■ 停止" : "▶ 再生";
+        }
+    }
+    
+    /// <summary>
+    /// 再生ボタンがクリックされた時のハンドラー。
+    /// </summary>
+    public void OnPlaybackButtonClick()
+    {
+        if (audioPlaybackController == null || string.IsNullOrEmpty(currentFocusedAudioFileName))
+        {
+            return;
+        }
+        
+        if (audioPlaybackController.IsPlaying)
+        {
+            audioPlaybackController.StopPlayback();
+            UpdatePlaybackButtonState(false);
+        }
+        else
+        {
+            audioPlaybackController.PlayRecording(currentFocusedMonthKey, currentFocusedAudioFileName);
+            UpdatePlaybackButtonState(true);
+        }
+    }
+    
+    /// <summary>
+    /// 再生開始イベントハンドラー
+    /// </summary>
+    private void OnPlaybackStartedHandler()
+    {
+        UpdateRecordingListVisuals(true);
+    }
+    
+    /// <summary>
+    /// 再生終了イベントハンドラー
+    /// </summary>
+    private void OnPlaybackFinishedHandler()
+    {
+        UpdateRecordingListVisuals(false);
+    }
+    
+    /// <summary>
+    /// 録音リストの視覚状態を更新（再生中は緑、停止時は白、選択中はシアン）
+    /// </summary>
+    private void UpdateRecordingListVisuals(bool isPlaying)
+    {
+        if (recordingListContent == null) return;
+        
+        int i = 0;
+        foreach (Transform child in recordingListContent)
+        {
+            var text = child.GetComponentInChildren<TextMeshProUGUI>();
+            if (text != null)
+            {
+                if (i == currentSelectedIndex)
+                {
+                    // 選択中の項目
+                    if (isPlaying)
+                    {
+                        // 再生中: 緑で点滅感を出すためにライム色
+                        text.color = new Color(0.4f, 1f, 0.4f); // ライトグリーン
+                        text.text = $"[再生中] {GetTimeLabel(i)}";
+                    }
+                    else
+                    {
+                        // 停止中: シアン
+                        text.color = Color.cyan;
+                        text.text = GetTimeLabel(i);
+                    }
+                }
+                else
+                {
+                    // 非選択項目: 白
+                    text.color = Color.white;
+                    text.text = GetTimeLabel(i);
+                }
+            }
+            i++;
+        }
+    }
+    
+    /// <summary>
+    /// リスト項目のラベルを取得
+    /// </summary>
+    private string GetTimeLabel(int index)
+    {
+        if (index < 0 || index >= currentRecordingList.Count) return "";
+        var (timestamp, _) = currentRecordingList[index];
+        var dt = System.DateTimeOffset.FromUnixTimeSeconds(timestamp).ToLocalTime();
+        return $"録音 {dt:HH:mm:ss}";
     }
 
     [Header("Focus Mode Settings")]
@@ -757,6 +1092,13 @@ public class MainUIManager : MonoBehaviour
         if (SessionManager.Instance != null)
         {
             SessionManager.Instance.OnSessionExpired -= OnSessionExpiredHandler;
+        }
+        
+        // ★追加: 再生イベント購読解除
+        if (audioPlaybackController != null)
+        {
+            audioPlaybackController.OnPlaybackStarted -= OnPlaybackStartedHandler;
+            audioPlaybackController.OnPlaybackFinished -= OnPlaybackFinishedHandler;
         }
     }
 

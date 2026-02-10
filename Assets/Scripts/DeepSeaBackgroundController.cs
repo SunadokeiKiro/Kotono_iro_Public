@@ -82,15 +82,23 @@ public class DeepSeaBackgroundController : MonoBehaviour
     {
         if (backgroundMaterial == null)
         {
-            // マテリアルを自動作成
-            Shader shader = Shader.Find("Custom/DeepSeaBackground");
+            // まずResourcesからシェーダーを読み込む（ビルドに含まれるようにするため）
+            Shader shader = Resources.Load<Shader>("Shaders/DeepSeaBackground");
+            
+            if (shader == null)
+            {
+                // フォールバック: Shader.Find (エディタでは動くが実機で失敗しやすい)
+                shader = Shader.Find("Custom/DeepSeaBackground");
+            }
+            
             if (shader != null)
             {
+                Debug.Log($"[DeepSeaBackground] Shader loaded successfully: {shader.name}");
                 backgroundMaterial = new Material(shader);
             }
             else
             {
-                Debug.LogError("[DeepSeaBackground] Shader 'Custom/DeepSeaBackground' not found!");
+                Debug.LogError("[DeepSeaBackground] Shader 'Custom/DeepSeaBackground' not found in Resources or via Shader.Find!");
                 return;
             }
         }

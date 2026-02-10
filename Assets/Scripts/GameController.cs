@@ -19,6 +19,7 @@ public class GameController : MonoBehaviour
     [SerializeField] private BackgroundGraphController graphController; // Optional: Streak Feature Heatmap
     [SerializeField] private PostProcessingController postProcessingController; // Art Enhancement
     [SerializeField] private CosmicBackgroundController cosmicBackgroundController; // Cosmic Background (replaces heatmap)
+    [SerializeField] private MicrophoneController microphoneController; // ★追加: 録音ファイル名取得用
 
 
     private ArtData currentArtData = new ArtData();
@@ -31,6 +32,9 @@ public class GameController : MonoBehaviour
 
     // 現在フォーカス中の波紋 (nullならフォーカスなし)
     private RippleData? activeFocusedRipple = null;
+
+    // ★追加: 最後の録音ファイル名を一時保持 (分析完了まで)
+    private string pendingAudioFileName = null;
 
     [Header("Input Settings")]
     [SerializeField] private float rippleClickThreshold = 3.0f; // 1.0 -> 3.0 (Sensitivity Up)
@@ -62,6 +66,34 @@ public class GameController : MonoBehaviour
              Debug.LogWarning("[GameController] FirebaseConfig instance is missing in Start.");
              if (mainUIManager != null) mainUIManager.ShowBlockingMessage("Error: Firebase Config Missing", true);
         }
+        
+        // ★修正: シーン遷移後に認証イベントが発火しない問題への対応
+        // Start()の時点で既にログイン済みの場合、イベントを待たずにデータをロード
+        StartCoroutine(CheckAndLoadOnStart());
+    }
+    
+    private IEnumerator CheckAndLoadOnStart()
+    {
+        // Firebase初期化を待つ（最大3秒）
+        float timeout = 3f;
+        while (FirebaseConfig.Instance == null || !FirebaseConfig.Instance.IsInitialized)
+        {
+            timeout -= Time.deltaTime;
+            if (timeout <= 0)
+            {
+                Debug.LogWarning("[GameController] Firebase initialization timeout.");
+                yield break;
+            }
+            yield return null;
+        }
+        
+        // ★既にログイン済みならデータをロード
+        var user = Firebase.Auth.FirebaseAuth.DefaultInstance.CurrentUser;
+        if (user != null)
+        {
+            Debug.Log($"[GameController] User already logged in on Start: {user.UserId.Substring(0, 5)}... Loading data.");
+            HandleAuthStateChanged(user);
+        }
     }
     
     // Flag to ensure we don't load data before Login UI gives the go-ahead
@@ -81,6 +113,12 @@ public class GameController : MonoBehaviour
         }
         
         LoginUIManager.OnLoginSuccessEvent += HandleLoginSuccess;
+        
+        // ★追加: MicrophoneControllerの録音完了イベント購読
+        if (microphoneController != null)
+        {
+            microphoneController.OnRecordingFinished += HandleRecordingFinished;
+        }
     }
 
     private void OnDisable()
@@ -97,6 +135,21 @@ public class GameController : MonoBehaviour
         }
         
         LoginUIManager.OnLoginSuccessEvent -= HandleLoginSuccess;
+        
+        // ★追加: MicrophoneControllerの録音完了イベント解除
+        if (microphoneController != null)
+        {
+            microphoneController.OnRecordingFinished -= HandleRecordingFinished;
+        }
+    }
+
+    /// <summary>
+    /// 録音完了時に呼び出され、ファイル名を一時保持します。
+    /// </summary>
+    private void HandleRecordingFinished(float duration, bool wasAuto, string audioFileName)
+    {
+        pendingAudioFileName = audioFileName;
+        Debug.Log($"[GameController] Recording finished. Duration: {duration:F2}s, Auto: {wasAuto}, File: {audioFileName}");
     }
 
     private void HandleLoginSuccess()
@@ -106,6 +159,12 @@ public class GameController : MonoBehaviour
         
 
         LoadWithCurrentSettings();
+        
+        // ★追加: 期限切れ録音の自動削除
+        if (AudioStorageManager.Instance != null)
+        {
+            AudioStorageManager.Instance.CleanupExpiredRecordings();
+        }
         
         // ★ Start Main Tutorial
         if (TutorialManager.Instance != null && mainUIManager != null)
@@ -282,11 +341,24 @@ public class GameController : MonoBehaviour
 
     private void HandleInput()
     {
-        // UI操作中は除外
-        if (UnityEngine.EventSystems.EventSystem.current != null && 
-            UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject())
+        // UI操作中は除外（マウスとタッチの両方に対応）
+        if (UnityEngine.EventSystems.EventSystem.current != null)
         {
-            return;
+            // マウス入力の場合
+            if (Input.GetMouseButtonDown(0) && UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject())
+            {
+                return;
+            }
+            
+            // タッチ入力の場合
+            if (Input.touchCount > 0)
+            {
+                Touch touch = Input.GetTouch(0);
+                if (UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject(touch.fingerId))
+                {
+                    return;
+                }
+            }
         }
 
         if (Input.GetMouseButtonDown(0))
@@ -357,6 +429,50 @@ public class GameController : MonoBehaviour
                         {
                             postProcessingController.SetFocusMode(true);
                             postProcessingController.UpdateEffectsFromEmotion(data.valence, data.arousal);
+                        }
+                        
+                        // ★変更: 時間範囲内の全EmotionPointを検索して録音リストを構築
+                        if (mainUIManager != null && currentArtData != null && currentMonthKey != null)
+                        {
+                            // startTimestamp〜endTimestamp範囲内の録音付きEmotionPointを取得
+                            var recordingsInRange = new List<(long timestamp, string audioFileName)>();
+                            
+                            Debug.Log($"[GameController] Searching recordings in range: {data.startTimestamp} - {data.endTimestamp}, MonthKey: {currentMonthKey}");
+                            Debug.Log($"[GameController] Total EmotionPoints: {currentArtData.emotionHistory?.Count ?? 0}");
+                            
+                            foreach (var ep in currentArtData.emotionHistory)
+                            {
+                                bool inRange = ep.timestamp >= data.startTimestamp && ep.timestamp <= data.endTimestamp;
+                                Debug.Log($"[GameController] EP timestamp: {ep.timestamp}, audioFileName: '{ep.audioFileName}', inRange: {inRange}");
+                                
+                                if (inRange)
+                                {
+                                    if (!string.IsNullOrEmpty(ep.audioFileName))
+                                    {
+                                        // ファイル存在チェック
+                                        bool exists = AudioStorageManager.Instance != null && 
+                                            AudioStorageManager.Instance.RecordingExists(currentMonthKey, ep.audioFileName);
+                                        Debug.Log($"[GameController] File exists check: {exists}");
+                                        
+                                        if (exists)
+                                        {
+                                            recordingsInRange.Add((ep.timestamp, ep.audioFileName));
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            Debug.Log($"[GameController] Found {recordingsInRange.Count} recordings in range");
+                            
+                            // 再生可否を判定
+                            bool canPlay = AudioStorageManager.Instance != null 
+                                && AudioStorageManager.Instance.CanPlayRecording(currentMonthKey);
+                            
+                            // 期限切れかどうか
+                            bool isExpired = recordingsInRange.Count > 0 && !canPlay;
+                            
+                            // UIに録音リストを渡す
+                            mainUIManager.SetPlaybackList(currentMonthKey, recordingsInRange, canPlay, isExpired);
                         }
                     }
                 }
@@ -767,8 +883,13 @@ public class GameController : MonoBehaviour
             timestamp = System.DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
             position = UnityEngine.Random.onUnitSphere * 6.28f,
             
+            audioFileName = pendingAudioFileName, // ★追加: 録音ファイル名を設定
+            
             rawSegments = new List<SentimentSegment>(response.sentiment_analysis.segments)
         };
+        
+        // ★追加: ファイル名使用済みなのでクリア
+        pendingAudioFileName = null;
         
         // リストに追加
         currentArtData.emotionHistory.Add(newEmotion);

@@ -26,9 +26,23 @@ public class GalleryPanelController : MonoBehaviour
     [SerializeField] private TextMeshProUGUI messageText;
 
     private List<GameObject> activeButtons = new List<GameObject>();
+    private bool isRefreshing = false;
 
-    void Start()
+    void Awake()
     {
+        InitPanel();
+    }
+
+    /// <summary>
+    /// panelRootの参照設定と初期状態を確立します。
+    /// Awake()から呼ばれますが、GOが最初から無効だった場合はOpenPanel()で遅延初期化されます。
+    /// </summary>
+    private bool isPanelInitialized = false;
+    private void InitPanel()
+    {
+        if (isPanelInitialized) return;
+        isPanelInitialized = true;
+
         // ルートが未設定なら自分自身をルートとする
         if (panelRoot == null) panelRoot = this.gameObject;
         
@@ -49,6 +63,9 @@ public class GalleryPanelController : MonoBehaviour
     /// </summary>
     public void OpenPanel()
     {
+        // GOが初回無効だった場合のAwake()未実行対策（遅延初期化）
+        if (!isPanelInitialized) InitPanel();
+
         if (panelRoot != null) panelRoot.SetActive(true);
         RefreshGalleryList();
     }
@@ -59,15 +76,22 @@ public class GalleryPanelController : MonoBehaviour
     public void ClosePanel()
     {
         if (panelRoot != null) panelRoot.SetActive(false);
+        isRefreshing = false; // 閉じた時はリフレッシュフラグもリセット
     }
 
     private void RefreshGalleryList()
     {
-        // 既存ボタン削除
-        foreach (var btn in activeButtons) Destroy(btn);
-        activeButtons.Clear();
+        if (isRefreshing) return; // 非同期リフレッシュ中の重複呼び出しを防止
+        isRefreshing = true;
 
-        if (contentParent == null || buttonTemplate == null) return;
+        // 既存ボタン削除
+        ClearExistingButtons();
+
+        if (contentParent == null || buttonTemplate == null)
+        {
+            isRefreshing = false;
+            return;
+        }
 
         // 1. User ID / Status Display
         string uidStr = "Guest";
@@ -83,23 +107,52 @@ public class GalleryPanelController : MonoBehaviour
         if (FirestoreManager.Instance != null)
         {
             FirestoreManager.Instance.GetMonthlyDataList((months) => {
-                // Success
+                // Success: コールバック到着時に既存ボタンを再クリア（重複防止）
+                ClearExistingButtons();
                 GenerateButtons(months);
                 
                 string msg = (months.Count > 0) ? "履歴から月を選択してください" : "データが見つかりませんでした (0件)";
                 if (messageText != null) messageText.text = msg;
+                isRefreshing = false;
                 
             }, (error) => {
                 // Failure
                 string err = $"取得エラー: {error}";
                 if (messageText != null) messageText.text = err;
                 Debug.LogError($"[GalleryPanel] Firestore Error: {error}");
+                isRefreshing = false;
             });
         }
         else
         {
             if (messageText != null) messageText.text = "Error: FirestoreManager Missing";
             Debug.LogError("[GalleryPanel] FirestoreManager Not Found");
+            isRefreshing = false;
+        }
+    }
+
+    /// <summary>
+    /// 既存の動的生成ボタンをすべて削除します。
+    /// </summary>
+    private void ClearExistingButtons()
+    {
+        foreach (var btn in activeButtons)
+        {
+            if (btn != null) Destroy(btn);
+        }
+        activeButtons.Clear();
+
+        // contentParentの子要素も直接走査（テンプレート以外を削除）
+        if (contentParent != null)
+        {
+            for (int i = contentParent.childCount - 1; i >= 0; i--)
+            {
+                var child = contentParent.GetChild(i).gameObject;
+                if (child != buttonTemplate)
+                {
+                    Destroy(child);
+                }
+            }
         }
     }
 

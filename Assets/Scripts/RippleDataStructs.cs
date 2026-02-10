@@ -45,6 +45,7 @@ public struct EmotionPoint
     public float confidence; // 自信 (0 to 1)
     public long timestamp;   // 記録時のタイムスタンプ
     public Vector3 position; // ★追加: 波紋の発生位置（球体上の座標）
+    public string audioFileName; // ★追加: 録音ファイル名 (例: "1698765432.wav")
     
     // 生データ保存用 (将来の拡張のため)
     public List<SentimentSegment> rawSegments;

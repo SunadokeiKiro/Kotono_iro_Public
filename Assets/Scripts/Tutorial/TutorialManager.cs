@@ -33,23 +33,43 @@ public class TutorialManager : MonoBehaviour
 
     private TutorialOverlayController GetOverlay()
     {
+        // 破棄済みチェック（シーン遷移で破棄された場合）
+        if (currentOverlay != null && currentOverlay.gameObject == null)
+        {
+            currentOverlay = null;
+        }
+
+        Canvas canvas = FindObjectOfType<Canvas>();
+        if (canvas == null)
+        {
+            Debug.LogWarning("[TutorialManager] Canvas not found in scene.");
+            return null;
+        }
+
         if (currentOverlay == null)
         {
             // シーン内に既存のものがないか探す
             currentOverlay = FindObjectOfType<TutorialOverlayController>();
             
-            // なければPrefabから生成 (Canvasの子にする必要があるため、Canvasを探す)
+            // なければPrefabから生成
             if (currentOverlay == null && overlayControllerPrefab != null)
             {
-                Canvas canvas = FindObjectOfType<Canvas>();
-                if (canvas != null)
-                {
-                    currentOverlay = Instantiate(overlayControllerPrefab, canvas.transform);
-                    // 最前面へ
-                    currentOverlay.transform.SetAsLastSibling();
-                }
+                currentOverlay = Instantiate(overlayControllerPrefab, canvas.transform);
             }
         }
+
+        // 現在のCanvasの子でなければ再配置（シーン遷移後対策）
+        if (currentOverlay != null && currentOverlay.transform.parent != canvas.transform)
+        {
+            currentOverlay.transform.SetParent(canvas.transform, false);
+        }
+
+        // 最前面へ
+        if (currentOverlay != null)
+        {
+            currentOverlay.transform.SetAsLastSibling();
+        }
+
         return currentOverlay;
     }
 
@@ -86,7 +106,7 @@ public class TutorialManager : MonoBehaviour
         yield return ShowStepRoutine(overlay, null, "コトノイロへようこそ。\nあなたの声を感情の色に変えてみましょう。");
 
         // Step 2: Rec Button
-        yield return ShowStepRoutine(overlay, ui.RecButtonRect, "このボタンを押すと録音が始まります。\n（今回は押しません）");
+        yield return ShowStepRoutine(overlay, ui.RecButtonRect, "このボタンを押すと録音が始まります。\n最大10分間録音できます。");
 
         // Step 3: Gallery Button
         yield return ShowStepRoutine(overlay, ui.GalleryButtonRect, "毎月アートは保存され、\n過去の記録はここから確認できます。");
@@ -97,7 +117,7 @@ public class TutorialManager : MonoBehaviour
         // Step 5: Result Area (Assuming central area)
         // MainUIManager doesn't have a specific rect for 'Result Area'. We can use a generic central position or pass null.
         // Or ui.PanelDetailsRect if accessible. Let's use null for center or add a rect later.
-        yield return ShowStepRoutine(overlay, null, "分析結果はここに波紋として表示されます。\n感情が色と形で表現されます。");
+        yield return ShowStepRoutine(overlay, null, "分析結果は中央に波紋として表示されます。\n感情が色と形で表現されます。");
 
         // Step 6: Finish
         yield return ShowStepRoutine(overlay, null, "さあ、あなたの今の気持ちを\n記録してみましょう。");
@@ -115,12 +135,11 @@ public class TutorialManager : MonoBehaviour
         var overlay = GetOverlay();
         if (overlay == null || settings == null) yield break;
 
-        // Step 1: Mic Settings
-        // Use Gain Slider as a proxy for the mic settings area
-        yield return ShowStepRoutine(overlay, settings.GainSliderRect, "使用するマイクと\n入力音量を調整できます。");
+        // Step 1: Mic Settings (横一列ハイライト)
+        yield return ShowStepRoutine(overlay, settings.GainSliderRect, "使用するマイクと\n入力音量を調整できます。", true);
 
-        // Step 2: Monitoring
-        yield return ShowStepRoutine(overlay, settings.VoiceLevelBarRect, "声を出して、ゲージが動くことを\n確認してください。\n緑色になるのが目安です。");
+        // Step 2: Monitoring (横一列ハイライト)
+        yield return ShowStepRoutine(overlay, settings.VoiceLevelBarRect, "声を出して、ゲージが動くことを\n確認してください。\n緑色になるのが目安です。", true);
 
         // Step 3: API Key
         yield return ShowStepRoutine(overlay, settings.ApiKeyInputRect, "必要に応じてAPIキーを設定できます。\n設定すると有料プランの特典も獲得できます。");
@@ -135,7 +154,7 @@ public class TutorialManager : MonoBehaviour
     private bool stepNextTriggered = false;
     private bool stepSkipTriggered = false;
 
-    private IEnumerator ShowStepRoutine(TutorialOverlayController overlay, RectTransform target, string text)
+    private IEnumerator ShowStepRoutine(TutorialOverlayController overlay, RectTransform target, string text, bool fullWidth = false)
     {
         if (stepSkipTriggered) yield break; // Already skipped
 
@@ -143,7 +162,8 @@ public class TutorialManager : MonoBehaviour
         
         overlay.ShowStep(target, text, 
             () => { stepNextTriggered = true; }, 
-            () => { stepSkipTriggered = true; stepNextTriggered = true; }
+            () => { stepSkipTriggered = true; stepNextTriggered = true; },
+            fullWidth
         );
 
         // Wait for input

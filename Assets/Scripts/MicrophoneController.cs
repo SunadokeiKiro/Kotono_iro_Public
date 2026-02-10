@@ -34,7 +34,7 @@ public class MicrophoneController : MonoBehaviour
     public float CurrentRmsValue { get; private set; } // ★ プロパティ定義を追加
     
     public float OverrideRecordLength { get; set; } = -1f; // ★追加: スケジュール録音用の強制制限時間 (-1で無効)
-    public event Action<float, bool> OnRecordingFinished; // ★追加: 録音完了通知イベント (秒数, 自動かどうか)
+    public event Action<float, bool, string> OnRecordingFinished; // ★拡張: 録音完了通知イベント (秒数, 自動かどうか, 保存ファイル名)
     public event Action<bool> OnRecordingStateChanged; // ★追加: 録音状態変更イベント (True=開始, False=終了)
     public event Action<bool> OnBusyStateChanged; // ★追加: 録音〜分析完了までを含む「作業中」状態 (UI非表示用)
 
@@ -566,11 +566,23 @@ public class MicrophoneController : MonoBehaviour
                 AudioClip processedClip = NormalizeAudioClip(trimmedClip);
                 SaveWavFile(audioFilePath, processedClip);
                 
+                // ★ 永続ストレージに保存
+                string savedFileName = null;
+                if (AudioStorageManager.Instance != null)
+                {
+                    DateTime now = TimeManager.Instance != null 
+                        ? TimeManager.Instance.GetCurrentJstTime() 
+                        : DateTime.Now;
+                    string monthKey = now.ToString("yyyy-MM");
+                    long timestamp = new DateTimeOffset(now).ToUnixTimeSeconds();
+                    savedFileName = AudioStorageManager.Instance.SaveRecording(audioFilePath, monthKey, timestamp);
+                }
+                
                 mainUIManager.HideRecordingPanel(); 
                 apiHandler.StartAnalysis(audioFilePath, wasAuto); // ★ セッション管理方式へ移行
                 
-                // ★ イベント発火 (自動かどうかを通知)
-                OnRecordingFinished?.Invoke(duration, wasAuto);
+                // ★ イベント発火 (自動かどうか、保存ファイル名を通知)
+                OnRecordingFinished?.Invoke(duration, wasAuto, savedFileName);
             }
             else
             {

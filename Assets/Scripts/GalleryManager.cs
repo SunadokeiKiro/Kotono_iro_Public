@@ -60,10 +60,17 @@ public class GalleryManager : MonoBehaviour
         if (isRefreshing) return; // Ignore if already refreshing
         isRefreshing = true;
 
-        // 既存のボタンをクリア (テンプレート以外)
-        foreach (var btn in activeButtons)
+        // 既存のボタンを完全クリア（重複防止のためContent下を全走査）
+        if (contentParent != null)
         {
-            if (btn != null) Destroy(btn);
+            for (int i = contentParent.childCount - 1; i >= 0; i--)
+            {
+                var child = contentParent.GetChild(i).gameObject;
+                if (child != buttonTemplate)
+                {
+                    Destroy(child);
+                }
+            }
         }
         activeButtons.Clear();
 

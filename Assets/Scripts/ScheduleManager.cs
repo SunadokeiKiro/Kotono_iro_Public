@@ -149,7 +149,7 @@ public class ScheduleManager : MonoBehaviour
         microphoneController.StopAutoRecording();
     }
 
-    private void OnRecordingFinishedHandler(float duration, bool isAuto)
+    private void OnRecordingFinishedHandler(float duration, bool isAuto, string audioFileName)
     {
         // 手動録音の場合はスケジュール進行に影響させない
         if (!isAuto) return;

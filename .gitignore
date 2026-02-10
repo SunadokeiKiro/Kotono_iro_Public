@@ -58,6 +58,11 @@
 .env.*
 !.env.example
 
+# Firebase Configuration Files (Do not commit API Keys)
+google-services.json
+google-services-desktop.json
+GoogleService-Info.plist
+
 # ========================================
 # Unity Plastic SCM
 # ========================================
