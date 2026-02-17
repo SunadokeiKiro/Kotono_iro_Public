@@ -43,19 +43,27 @@ public class GalleryPanelController : MonoBehaviour
         if (isPanelInitialized) return;
         isPanelInitialized = true;
 
-        // ルートが未設定なら自分自身をルートとする
         if (panelRoot == null) panelRoot = this.gameObject;
         
         // 初期化時は非表示
-        panelRoot.SetActive(false);
+        UIFadeHelper.HideImmediate(panelRoot);
 
         if (closeButton != null)
         {
             closeButton.onClick.AddListener(ClosePanel);
+            UIStyler.ApplyStyleToButton(closeButton);
         }
         
-        // テンプレートは非表示に
         if(buttonTemplate != null) buttonTemplate.SetActive(false);
+
+        // ★ グラスモーフィズム適用（ギャラリーは背景が透けると見づらいため高alpha）
+        Image panelImage = panelRoot.GetComponent<Image>();
+        if (panelImage != null) UIStyler.ApplyGlassStyle(panelImage, alpha: 0.95f);
+
+        // ★ テキストスタイル適用
+        if (titleText != null) UIStyler.ApplyStyleToTMP(titleText, isHeader: true);
+        if (userIdText != null) UIStyler.ApplyStyleToTMP(userIdText);
+        if (messageText != null) UIStyler.ApplyStyleToTMP(messageText);
     }
 
     /// <summary>
@@ -63,10 +71,9 @@ public class GalleryPanelController : MonoBehaviour
     /// </summary>
     public void OpenPanel()
     {
-        // GOが初回無効だった場合のAwake()未実行対策（遅延初期化）
         if (!isPanelInitialized) InitPanel();
 
-        if (panelRoot != null) panelRoot.SetActive(true);
+        if (panelRoot != null) UIFadeHelper.FadeIn(this, panelRoot);
         RefreshGalleryList();
     }
 
@@ -75,8 +82,8 @@ public class GalleryPanelController : MonoBehaviour
     /// </summary>
     public void ClosePanel()
     {
-        if (panelRoot != null) panelRoot.SetActive(false);
-        isRefreshing = false; // 閉じた時はリフレッシュフラグもリセット
+        if (panelRoot != null) UIFadeHelper.FadeOut(this, panelRoot);
+        isRefreshing = false;
     }
 
     private void RefreshGalleryList()
@@ -158,7 +165,6 @@ public class GalleryPanelController : MonoBehaviour
 
     private void GenerateButtons(List<string> monthKeys)
     {
-        // 新しい順にソート (文字列ソートでyyyy-MMなら問題ない)
         var sortedList = monthKeys.OrderByDescending(x => x).ToList();
 
         foreach (var monthKey in sortedList)
@@ -173,6 +179,9 @@ public class GalleryPanelController : MonoBehaviour
             Button btnComp = newBtnObj.GetComponent<Button>();
             Image btnImg = newBtnObj.GetComponent<Image>();
 
+            // ★ UIStyler適用
+            if (btnComp != null) UIStyler.ApplyStyleToButton(btnComp);
+
             // サブスクリプション判定
             bool isAllowed = true;
             if (SubscriptionManager.Instance != null)
@@ -184,7 +193,7 @@ public class GalleryPanelController : MonoBehaviour
             {
                 if (btnComp != null)
                 {
-                    string key = monthKey; // Capture
+                    string key = monthKey;
                     btnComp.onClick.AddListener(() => OnMonthClicked(key));
                 }
             }

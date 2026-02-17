@@ -407,7 +407,7 @@ public class SettingsManager : MonoBehaviour
                         // 特典メッセージを追加表示
                         if (response.offerEligible)
                         {
-                            ShowOfferMessage("Standardプラン1カ月無料特典あり");
+                            ShowOfferMessage("Standardプラン 1カ月無料特典あり");
                         }
                     }
                     else
@@ -418,6 +418,7 @@ public class SettingsManager : MonoBehaviour
                             statusText.color = Color.red;
                         }
                     }
+
                 },
                 (error) => {
                     if (statusText != null)
@@ -431,13 +432,14 @@ public class SettingsManager : MonoBehaviour
     }
 
     /// <summary>
-    /// statusTextに特典メッセージを追加表示（2行以内）
+    /// statusTextに特典メッセージを追加表示（アクセントカラーで強調）
     /// </summary>
     void ShowOfferMessage(string message)
     {
         if (statusText != null)
         {
             statusText.text += "\n" + message;
+            statusText.color = UIStyler.Accent; // シアンアクセントで目立たせる
         }
     }
 

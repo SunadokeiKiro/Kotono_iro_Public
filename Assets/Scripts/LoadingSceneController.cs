@@ -22,7 +22,10 @@ public class LoadingSceneController : MonoBehaviour
             return;
         }
 
-        // 非同期ロードとフェードのコルーチンを開始
+        // ★ 深海テーマのスタイル適用
+        UIStyler.ApplyStyleToSlider(progressBar);
+        UIStyler.ApplyStyleToTMP(progressText);
+
         StartCoroutine(LoadAndFade());
     }
     

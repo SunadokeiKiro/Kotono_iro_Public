@@ -74,19 +74,22 @@ public class SceneTransitionManager : MonoBehaviour
     {
         if (fadeCanvasGroup == null) yield break;
 
-        fadeCanvasGroup.blocksRaycasts = true; // フェード中はUI操作をブロック
+        fadeCanvasGroup.blocksRaycasts = true;
         float startAlpha = fadeCanvasGroup.alpha;
         float time = 0;
 
         while (time < fadeDuration)
         {
-            time += Time.unscaledDeltaTime; // Time.timeScaleに影響されない時間
-            fadeCanvasGroup.alpha = Mathf.Lerp(startAlpha, targetAlpha, time / fadeDuration);
+            time += Time.unscaledDeltaTime;
+            float t = Mathf.Clamp01(time / fadeDuration);
+            // ★ SmoothStepイージング（深海テーマに合うゆったりとした遷移）
+            t = t * t * (3f - 2f * t);
+            fadeCanvasGroup.alpha = Mathf.Lerp(startAlpha, targetAlpha, t);
             yield return null;
         }
 
         fadeCanvasGroup.alpha = targetAlpha;
-        fadeCanvasGroup.blocksRaycasts = (targetAlpha == 1f); // 完全に不透明な時だけ操作をブロック
+        fadeCanvasGroup.blocksRaycasts = (targetAlpha == 1f);
     }
 
     /// <summary>

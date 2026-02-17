@@ -279,6 +279,18 @@ public class MainUIManager : MonoBehaviour
         UIStyler.ApplyStyleToTMP(blockingText);
         UIStyler.ApplyStyleToTMP(recordingText);
         UIStyler.ApplyStyleToTMP(modeIndicatorText);
+
+        // ★ パネル背景にグラスモーフィズム適用
+        if (blockingPanel != null)
+        {
+            Image bpImage = blockingPanel.GetComponent<Image>();
+            if (bpImage != null) UIStyler.ApplyGlassStyle(bpImage);
+        }
+        if (recordingPanel != null)
+        {
+            Image rpImage = recordingPanel.GetComponent<Image>();
+            if (rpImage != null) UIStyler.ApplyGlassStyle(rpImage);
+        }
     }
 
     private void InitializeButtons()
@@ -410,34 +422,34 @@ public class MainUIManager : MonoBehaviour
     #endregion
 
     #region Status Indicator
-    public void ShowBlockingMessage(string message, bool showCloseButton = false) // Renamed from ShowLoading
+    public void ShowBlockingMessage(string message, bool showCloseButton = false)
     {
         if (blockingPanel != null) 
         { 
             if (blockingText != null) blockingText.text = message; 
             if (blockingCloseButton != null) blockingCloseButton.gameObject.SetActive(showCloseButton);
-            blockingPanel.SetActive(true); 
+            UIFadeHelper.FadeIn(this, blockingPanel); 
         }
     }
-    public void HideBlockingMessage() { if (blockingPanel != null) blockingPanel.SetActive(false); }
+    public void HideBlockingMessage() { if (blockingPanel != null) UIFadeHelper.FadeOut(this, blockingPanel); }
 
-    public void ShowProcessingMessage(string message) // Now uses RecordingPanel (Overlay)
+    public void ShowProcessingMessage(string message)
     {
-        if (recordingPanel != null) { if (recordingText != null) recordingText.text = message; recordingPanel.SetActive(true); }
+        if (recordingPanel != null) { if (recordingText != null) recordingText.text = message; UIFadeHelper.FadeIn(this, recordingPanel); }
     }
-    public void HideProcessingMessage() { if (recordingPanel != null) recordingPanel.SetActive(false); }
+    public void HideProcessingMessage() { if (recordingPanel != null) UIFadeHelper.FadeOut(this, recordingPanel); }
 
     public void ShowRecordingPanel(string message)
     {
          if (recordingPanel != null)
          {
              if (recordingText != null) recordingText.text = message;
-             recordingPanel.SetActive(true);
+             UIFadeHelper.FadeIn(this, recordingPanel);
          }
     }
     public void HideRecordingPanel()
     {
-         if (recordingPanel != null) recordingPanel.SetActive(false);
+         if (recordingPanel != null) UIFadeHelper.FadeOut(this, recordingPanel);
     }
     #endregion
 
@@ -1055,6 +1067,15 @@ public class MainUIManager : MonoBehaviour
                 text.text = isRecording ? "STOP" : "REC";
                 text.color = isRecording ? Color.red : Color.white;
             }
+
+            // ★ 録音中のグロー演出
+            RecordButtonGlow glow = recButton.GetComponent<RecordButtonGlow>();
+            if (glow == null)
+            {
+                glow = recButton.gameObject.AddComponent<RecordButtonGlow>();
+            }
+            glow.SetRecording(isRecording);
+
             UpdateRecButtonVisibility();
         }
     }

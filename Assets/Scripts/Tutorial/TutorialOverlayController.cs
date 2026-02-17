@@ -25,11 +25,18 @@ public class TutorialOverlayController : MonoBehaviour
         if (canvasGroup == null) canvasGroup = GetComponent<CanvasGroup>();
         if (overlayCanvasRect == null) overlayCanvasRect = GetComponent<RectTransform>();
 
-        if (nextButton != null) nextButton.onClick.AddListener(OnNextClicked);
-        if (skipButton != null) skipButton.onClick.AddListener(OnSkipClicked);
+        if (nextButton != null)
+        {
+            nextButton.onClick.AddListener(OnNextClicked);
+            UIStyler.ApplyStyleToButton(nextButton);
+        }
+        if (skipButton != null)
+        {
+            skipButton.onClick.AddListener(OnSkipClicked);
+            UIStyler.ApplyStyleToButton(skipButton);
+        }
 
         // 初期状態: GOは有効なまま、CanvasGroupで非表示にする
-        // ※ gameObject.SetActive(false) は使わない（Instantiate直後のShowStep呼び出しが失敗するため）
         if (canvasGroup != null)
         {
             canvasGroup.alpha = 0f;
@@ -37,10 +44,9 @@ public class TutorialOverlayController : MonoBehaviour
             canvasGroup.interactable = false;
         }
         
-        // ハイライト枠がなければ警告
         if (highlightFrame == null)
         {
-            Debug.LogWarning("TutorialOverlayController: Highlight Frame is missing. ハイライト枠がInspectorで未設定です。");
+            Debug.LogWarning("TutorialOverlayController: Highlight Frame is missing.");
         }
         else
         {
@@ -52,7 +58,7 @@ public class TutorialOverlayController : MonoBehaviour
     }
 
     /// <summary>
-    /// instructionTextの背後に黒背景パネルを生成
+    /// instructionTextの背後にグラスモーフィズム風背景パネルを生成
     /// </summary>
     private void CreateTextBackground()
     {
@@ -61,13 +67,13 @@ public class TutorialOverlayController : MonoBehaviour
         GameObject bgObj = new GameObject("TextBackground", typeof(RectTransform), typeof(Image));
         bgObj.transform.SetParent(instructionText.transform.parent, false);
 
-        // テキストの直前に配置（背面に描画される）
         int textIndex = instructionText.transform.GetSiblingIndex();
         bgObj.transform.SetSiblingIndex(textIndex);
 
         textBackgroundRect = bgObj.GetComponent<RectTransform>();
         Image bgImage = bgObj.GetComponent<Image>();
-        bgImage.color = new Color(0f, 0f, 0f, 1f); // 黒α255
+        // ★ グラスモーフィズム風に変更
+        UIStyler.ApplyGlassStyle(bgImage);
         bgImage.raycastTarget = false;
     }
 
@@ -82,11 +88,15 @@ public class TutorialOverlayController : MonoBehaviour
     public void ShowStep(RectTransform target, string text, System.Action onNext, System.Action onSkip, bool fullWidth = false)
     {
         gameObject.SetActive(true);
+        // ★ フェードインでフワッと表示
         if (canvasGroup != null)
         {
-            canvasGroup.alpha = 1f;
-            canvasGroup.blocksRaycasts = true;
-            canvasGroup.interactable = true;
+            StopAllCoroutines();
+            StartCoroutine(FadeCanvasGroup(canvasGroup, canvasGroup.alpha, 1f, 0.3f, () =>
+            {
+                canvasGroup.blocksRaycasts = true;
+                canvasGroup.interactable = true;
+            }));
         }
 
         if (instructionText != null) instructionText.text = text;
@@ -254,11 +264,36 @@ public class TutorialOverlayController : MonoBehaviour
     {
         if (canvasGroup != null)
         {
-            canvasGroup.alpha = 0f;
             canvasGroup.blocksRaycasts = false;
             canvasGroup.interactable = false;
+            // ★ フェードアウトでフワッと消える
+            StartCoroutine(FadeCanvasGroup(canvasGroup, canvasGroup.alpha, 0f, 0.3f, () =>
+            {
+                gameObject.SetActive(false);
+            }));
         }
-        gameObject.SetActive(false);
+        else
+        {
+            gameObject.SetActive(false);
+        }
+    }
+
+    /// <summary>
+    /// CanvasGroupのalphaをフェードするコルーチン。
+    /// </summary>
+    private IEnumerator FadeCanvasGroup(CanvasGroup cg, float from, float to, float duration, System.Action onComplete)
+    {
+        float elapsed = 0f;
+        while (elapsed < duration)
+        {
+            elapsed += Time.unscaledDeltaTime;
+            float t = Mathf.Clamp01(elapsed / duration);
+            t = t * t * (3f - 2f * t); // SmoothStep
+            cg.alpha = Mathf.Lerp(from, to, t);
+            yield return null;
+        }
+        cg.alpha = to;
+        onComplete?.Invoke();
     }
 
     private void OnNextClicked()

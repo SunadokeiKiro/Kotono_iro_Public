@@ -40,24 +40,25 @@ public class LoginUIManager : MonoBehaviour
     void Start()
     {
         // Initial State: Hide everything to prevent flashing
-        if (loginPanel != null) loginPanel.SetActive(false);
+        if (loginPanel != null) UIFadeHelper.HideImmediate(loginPanel);
         if (mainAppContent != null) mainAppContent.SetActive(false);
         
         // Start Initialization Routine
         StartCoroutine(InitializeLoginState());
 
-        // Button Listeners - Separate actions for each button
+        // Button Listeners
         if (loginButton) loginButton.onClick.AddListener(OnLoginClick);
         if (registerButton) registerButton.onClick.AddListener(OnRegisterClick);
         
-        // Optional: Toggle Button (If used for other UI changes, otherwise optional)
         if (toggleModeButton != null)
             toggleModeButton.onClick.AddListener(ToggleMode);
             
         if (googleLoginButton != null)
             googleLoginButton.onClick.AddListener(OnGoogleLoginClick);
 
-        // Initialize UI State (Text, etc.)
+        // ★ 深海テーマのスタイル適用
+        ApplyStyles();
+
         UpdateUIState();
     }
 
@@ -227,21 +228,18 @@ public class LoginUIManager : MonoBehaviour
     private void OnLoginSuccess(string uid)
     {
         Debug.Log("Login UI: Login Success. Hiding Panel.");
-        if (loginPanel != null) loginPanel.SetActive(false);
+        if (loginPanel != null) UIFadeHelper.FadeOut(this, loginPanel);
         if (mainAppContent != null) mainAppContent.SetActive(true);
         
-        // Notify GameController or others that login is fully complete and App UI is ready
         OnLoginSuccessEvent?.Invoke();
     }
 
     private void ShowLoginScreen()
     {
-        if (loginPanel != null) loginPanel.SetActive(true);
+        if (loginPanel != null) UIFadeHelper.FadeIn(this, loginPanel);
         if (mainAppContent != null) mainAppContent.SetActive(false);
         
         // ★ 修正: GameControllerが表示したblockingPanelを非表示にする
-        // mainAppContentが非アクティブになるとMainUIManagerも非アクティブになる可能性があるため、
-        // 直接探して非表示にする
         var loadingPanel = GameObject.Find("LoadingPanel");
         if (loadingPanel != null) loadingPanel.SetActive(false);
     }
@@ -253,5 +251,35 @@ public class LoginUIManager : MonoBehaviour
             statusText.text = message;
             statusText.color = isError ? Color.red : Color.white;
         }
+    }
+
+    /// <summary>
+    /// 深海テーマのスタイルを適用します。
+    /// </summary>
+    private void ApplyStyles()
+    {
+        // ログインパネルにグラスモーフィズム
+        if (loginPanel != null)
+        {
+            Image panelImage = loginPanel.GetComponent<Image>();
+            if (panelImage != null)
+            {
+                UIStyler.ApplyGlassStyle(panelImage);
+            }
+        }
+
+        // ボタンスタイル
+        if (loginButton != null) UIStyler.ApplyStyleToButton(loginButton);
+        if (registerButton != null) UIStyler.ApplyStyleToButton(registerButton);
+        if (toggleModeButton != null) UIStyler.ApplyStyleToButton(toggleModeButton);
+        if (googleLoginButton != null) UIStyler.ApplyStyleToButton(googleLoginButton);
+
+        // 入力フィールドスタイル
+        if (emailInput != null) UIStyler.ApplyStyleToInputField(emailInput);
+        if (passwordInput != null) UIStyler.ApplyStyleToInputField(passwordInput);
+
+        // テキストスタイル
+        if (statusText != null) UIStyler.ApplyStyleToTMP(statusText);
+        if (toggleButtonText != null) UIStyler.ApplyStyleToTMP(toggleButtonText);
     }
 }

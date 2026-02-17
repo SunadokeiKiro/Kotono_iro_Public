@@ -34,7 +34,6 @@ public class SimpleCameraController : MonoBehaviour
     private bool isDragging = false;
     // State
     private float initialDistance; // 初期距離（Return用）
-    private float initialHeight;   // 初期高さ（Return用）
     private float lastManualInteractionTime;
 
     void Start()
@@ -57,12 +56,10 @@ public class SimpleCameraController : MonoBehaviour
         if (rotationPivot != null)
         {
             initialDistance = Vector3.Distance(transform.position, rotationPivot.position);
-            initialHeight = transform.position.y - rotationPivot.position.y; // 高さ(Y差分)
         }
         else
         {
             initialDistance = 15.0f; // Fallback
-            initialHeight = 0f;
         }
     }
 
@@ -80,35 +77,32 @@ public class SimpleCameraController : MonoBehaviour
         {
             HandleManualRotation();
             
-            // Return Home Logic: アイドル中は初期位置（距離＆高さ）に戻ろうとする
+            // Return Home Logic: 距離のみ初期値に戻す（方向・仰角は維持）
+            // moveSmoothTime で設定した時間で元の距離に戻る
             // 手動ドラッグ中は行わない
             if (!isDragging)
             {
-                // 現在の水平方向（XZ平面）のベクトルを取得
-                Vector3 currentDir = (transform.position - rotationPivot.position);
-                currentDir.y = 0; // 高さを無視
-                currentDir.Normalize();
+                Vector3 offsetFromPivot = transform.position - rotationPivot.position;
+                float currentDistance = offsetFromPivot.magnitude;
 
-                if (currentDir == Vector3.zero) currentDir = Vector3.back;
+                // 距離だけ初期値に補正（方向はそのまま維持）
+                if (currentDistance > 0.01f)
+                {
+                    Vector3 homePos = rotationPivot.position + offsetFromPivot.normalized * initialDistance;
+                    transform.position = Vector3.SmoothDamp(transform.position, homePos, ref currentVelocity, moveSmoothTime);
+                }
 
-                // 目標位置: ピボット + 水平方向 * 距離 + 高さ
-                // これにより、経度(回転角)は維持しつつ、距離と高さだけ初期状態に戻す
-                Vector3 homePos = rotationPivot.position + (currentDir * initialDistance);
-                homePos.y = rotationPivot.position.y + initialHeight;
-
-                transform.position = Vector3.SmoothDamp(transform.position, homePos, ref currentVelocity, 1.0f); // ゆっくり戻る
-                
-                // 回転もピボットを見るように戻す (Pitchをリセット)
+                // ピボットを見るように回転を補正
                 var lookRot = Quaternion.LookRotation(rotationPivot.position - transform.position);
-                transform.rotation = Quaternion.Slerp(transform.rotation, lookRot, Time.deltaTime * 2.0f);
+                transform.rotation = Quaternion.Slerp(transform.rotation, lookRot, Time.deltaTime * 5.0f);
             }
         }
     }
 
     private void HandleManualRotation()
     {
-        // ... (省略: 修正なし)
-        float rotationInput = 0f;
+        float rotationInputX = 0f;
+        float rotationInputY = 0f;
         
         // Touch Input (Mobile / Simulator)
         if (Input.touchCount > 0)
@@ -118,13 +112,8 @@ public class SimpleCameraController : MonoBehaviour
             {
                 isDragging = true;
                 lastManualInteractionTime = Time.time;
-                // Touch delta is in pixels. Adjust sensitivity accordingly.
-                // Assuming standard density, 0.1f sensitivity relative to mouse might be needed, 
-                // but let's use a dedicated multiplier or reuse manualRotationSpeed with factor.
-                // Mouse X returns -1 to 1 usually (or delta). Touch delta is pixels.
-                // Let's normalize by Screen.width or use a small factor. 
-                // A factor of 0.1f * manualRotationSpeed usually works well for pixel deltas.
-                rotationInput = touch.deltaPosition.x * 0.1f * manualRotationSpeed;
+                rotationInputX = touch.deltaPosition.x * 0.1f * manualRotationSpeed;
+                rotationInputY = touch.deltaPosition.y * 0.1f * manualRotationSpeed;
             }
             else if (touch.phase == TouchPhase.Began || touch.phase == TouchPhase.Stationary)
             {
@@ -140,36 +129,36 @@ public class SimpleCameraController : MonoBehaviour
         {
             isDragging = true;
             lastManualInteractionTime = Time.time;
-            float mouseX = Input.GetAxis("Mouse X");
-            rotationInput = mouseX * manualRotationSpeed;
+            rotationInputX = Input.GetAxis("Mouse X") * manualRotationSpeed;
+            rotationInputY = Input.GetAxis("Mouse Y") * manualRotationSpeed;
         }
         else
         {
             isDragging = false;
         }
 
-        if (isDragging && Mathf.Abs(rotationInput) > 0.001f)
+        if (isDragging && (Mathf.Abs(rotationInputX) > 0.001f || Mathf.Abs(rotationInputY) > 0.001f))
         {
-            transform.RotateAround(rotationPivot.position, Vector3.up, rotationInput * Time.deltaTime);
-        }
+            // 横回転: ワールドY軸周り
+            transform.RotateAround(rotationPivot.position, Vector3.up, rotationInputX * Time.deltaTime);
 
-        // HandleManualRotation内でのLookAtは、Focus中以外常に呼ばれるべきだが、
-        // Return Home中はSmoothDampした位置からLookAtしたい。
-        // ここでは「ドラッグ中」のみ即時LookAtし、それ以外はUpdateのReturn Logicに任せるか？
-        // 既存コードでは HandleManualRotation 下で LookAt している。
-        // Return Logic で rotation を Slerp しているので競合する。
-        // -> HandleManualRotation の LookAt を条件付きにするか、Return Logic の Slerp を優先する。
-        
-        // 修正: ManualRotation内では LookAt を削除し、Updateの最後に共通で行う設計にするのが筋だが、
-        // ここでは「ドラッグ中」だけ強制LookAtし、戻り中はSlerpに任せる。
-        if (isDragging) 
-        {
-             transform.LookAt(rotationPivot);
+            // 縦回転: カメラのローカル右方向軸周り（制約なし・360度自由回転）
+            float verticalDelta = -rotationInputY * Time.deltaTime;
+            if (Mathf.Abs(verticalDelta) > 0.001f)
+            {
+                transform.RotateAround(rotationPivot.position, transform.right, verticalDelta);
+            }
+
+            // RotateAround後、ピボットを向くように補正
+            transform.LookAt(rotationPivot);
         }
         
+        // アイドル回転: 現在の画角（仰角）を維持したままY軸周りに水平回転
         if (!isDragging && (Time.time - lastManualInteractionTime > resumeIdleDelay))
         {
-            transform.RotateAround(rotationPivot.position, idleAxis, idleRotationSpeed * Time.deltaTime);
+            transform.RotateAround(rotationPivot.position, Vector3.up, idleRotationSpeed * Time.deltaTime);
+            // 回転後、常にピボットを向くように補正
+            transform.LookAt(rotationPivot);
         }
     }
 

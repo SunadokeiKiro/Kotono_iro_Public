@@ -58,11 +58,15 @@ public class SubscriptionUIManager : MonoBehaviour
 
         // APIキー特典資格をチェック
         CheckApiKeyOfferEligibility();
+
+        // ★ 深海テーマのスタイル適用
+        ApplyStyles();
+
         RefreshUI();
 
         // ★ 初期状態でオーバーレイを非表示
         if (purchaseLoadingOverlay != null)
-            purchaseLoadingOverlay.SetActive(false);
+            UIFadeHelper.HideImmediate(purchaseLoadingOverlay);
     }
 
     void OnDestroy()
@@ -94,7 +98,7 @@ public class SubscriptionUIManager : MonoBehaviour
         Debug.Log("[SubscriptionUIManager] Purchase started - showing loading overlay");
         if (purchaseLoadingOverlay != null)
         {
-            purchaseLoadingOverlay.SetActive(true);
+            UIFadeHelper.FadeIn(this, purchaseLoadingOverlay);
             if (purchaseLoadingText != null)
                 purchaseLoadingText.text = "購入処理中...\nしばらくお待ちください";
         }
@@ -108,7 +112,7 @@ public class SubscriptionUIManager : MonoBehaviour
         Debug.Log("[SubscriptionUIManager] Purchase completed - hiding loading overlay");
         if (purchaseLoadingOverlay != null)
         {
-            purchaseLoadingOverlay.SetActive(false);
+            UIFadeHelper.FadeOut(this, purchaseLoadingOverlay);
         }
     }
 
@@ -136,10 +140,21 @@ public class SubscriptionUIManager : MonoBehaviour
         if (apiKeyOfferBadge != null)
         {
             apiKeyOfferBadge.SetActive(isApiKeyOfferEligible);
+
+            // ★ PromoBadgeAnimatorを自動アタッチ（未アタッチの場合のみ）
+            if (isApiKeyOfferEligible)
+            {
+                if (apiKeyOfferBadge.GetComponent<PromoBadgeAnimator>() == null)
+                {
+                    apiKeyOfferBadge.AddComponent<PromoBadgeAnimator>();
+                }
+            }
         }
         if (apiKeyOfferBadgeText != null && isApiKeyOfferEligible)
         {
+            // ★ リッチタグで訴求力を強化
             apiKeyOfferBadgeText.text = "1カ月無料";
+            apiKeyOfferBadgeText.richText = true;
         }
     }
 
@@ -323,5 +338,35 @@ public class SubscriptionUIManager : MonoBehaviour
             statusText.text = "";
             statusText.gameObject.SetActive(false);
         }
+    }
+
+    /// <summary>
+    /// 深海テーマのスタイルを適用します。
+    /// </summary>
+    private void ApplyStyles()
+    {
+        // ボタンスタイル
+        if (buyStandardButton != null) UIStyler.ApplyStyleToButton(buyStandardButton);
+        if (buyPremiumButton != null) UIStyler.ApplyStyleToButton(buyPremiumButton);
+        if (buyUltimateButton != null) UIStyler.ApplyStyleToButton(buyUltimateButton);
+        if (restoreButton != null) UIStyler.ApplyStyleToButton(restoreButton);
+
+        // テキストスタイル
+        if (standardPriceText != null) UIStyler.ApplyStyleToTMP(standardPriceText);
+        if (premiumPriceText != null) UIStyler.ApplyStyleToTMP(premiumPriceText);
+        if (ultimatePriceText != null) UIStyler.ApplyStyleToTMP(ultimatePriceText);
+        if (currentPlanText != null) UIStyler.ApplyStyleToTMP(currentPlanText);
+        if (statusText != null) UIStyler.ApplyStyleToTMP(statusText);
+
+        // ローディングオーバーレイにグラスモーフィズム
+        if (purchaseLoadingOverlay != null)
+        {
+            Image overlayImg = purchaseLoadingOverlay.GetComponent<Image>();
+            if (overlayImg != null)
+            {
+                UIStyler.ApplyGlassStyle(overlayImg);
+            }
+        }
+        if (purchaseLoadingText != null) UIStyler.ApplyStyleToTMP(purchaseLoadingText);
     }
 }
